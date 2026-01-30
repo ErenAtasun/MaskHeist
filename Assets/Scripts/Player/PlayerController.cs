@@ -7,6 +7,7 @@ using UnityEngine.InputSystem;
 /// Works for both Hider and Seeker roles.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(NetworkTransformReliable))]
 public class PlayerController : NetworkBehaviour
 {
     [Header("Movement Settings")]
