@@ -37,14 +37,14 @@ namespace MaskHeist.Core
 
         IEnumerator GameLoop()
         {
-            yield new WaitForSeconds(2f); // Herkesin sahneye girmesini bekle
+            yield return new WaitForSeconds(2f); // Herkesin sahneye girmesini bekle
 
             // 1. Setup Fazı
             currentPhase = GamePhase.Setup;
             Debug.Log("Faz: Setup - Roller Dağıtılıyor...");
             AssignRoles(); // Hider ve Seeker'ları seç
             RpcUpdatePhase(currentPhase);
-            yield new WaitForSeconds(3f);
+            yield return new WaitForSeconds(3f);
 
             // 2. Hiding Fazı
             currentPhase = GamePhase.Hiding;
@@ -52,14 +52,14 @@ namespace MaskHeist.Core
             Debug.Log("Faz: Hiding - Saklayan saklanıyor...");
             RpcUpdatePhase(currentPhase);
             // Burada Arayanları kör et veya spawn'da kilitle
-            yield new WaitForSeconds(hidingPhaseDuration);
+            yield return new WaitForSeconds(hidingPhaseDuration);
 
             // 3. Briefing Fazı
             currentPhase = GamePhase.Briefing;
             phaseEndTime = NetworkTime.time + briefingPhaseDuration;
             Debug.Log("Faz: Briefing - Arayanlar hazırlanıyor...");
             RpcUpdatePhase(currentPhase);
-            yield new WaitForSeconds(briefingPhaseDuration);
+            yield return new WaitForSeconds(briefingPhaseDuration);
 
             // 4. Seeking Fazı
             currentPhase = GamePhase.Seeking;
