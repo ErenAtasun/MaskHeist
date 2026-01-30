@@ -1,3 +1,4 @@
+using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -6,7 +7,7 @@ using UnityEngine.InputSystem;
 /// Works for both Hider and Seeker roles.
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     [Header("Movement Settings")]
     [SerializeField] private float walkSpeed = 5f;
@@ -55,12 +56,38 @@ public class PlayerController : MonoBehaviour
         }
 
         targetHeight = standingHeight;
+    }
+
+    public override void OnStartLocalPlayer()
+    {
+        // Sadece local oyuncu için imleci kilitle ve kamerayı aktif et
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+        
+        if (cameraTransform != null)
+        {
+            cameraTransform.gameObject.SetActive(true);
+            // AudioListener'ı da açmak gerekebilir
+            var listener = cameraTransform.GetComponent<AudioListener>();
+            if (listener) listener.enabled = true;
+        }
+    }
+
+    private void Start()
+    {
+        // Eğer local player değilse, kamerayı ve dinleyiciyi kapat
+        if (!isLocalPlayer && cameraTransform != null)
+        {
+            cameraTransform.gameObject.SetActive(false);
+            var listener = cameraTransform.GetComponent<AudioListener>();
+            if (listener) listener.enabled = false;
+        }
     }
 
     private void Update()
     {
+        if (!isLocalPlayer) return;
+
         HandleInput();
         HandleMovement();
         HandleLook();
