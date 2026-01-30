@@ -1,0 +1,230 @@
+﻿1) Oyun Özeti
+Çalışma Adı: Heist & Hide (değiştirilebilir)
+Tür: Çok oyunculu (8 kişi örnek), round-based, saklama/kaçınma + arama/çalma
+Hedef: Turlar boyunca puan toplayıp toplam skorla kazanmak.
+Temel Fikir
+* Her turda 1 oyuncu "Saklayan (Hider)", diğerleri "Arayanlar (Seekers)" olur.
+* Saklayan, rastgele gelen "malzemeyi" (loot/kontrat eşyası) 30-45 sn içinde haritaya saklar.
+* Arayanlar, kendi spawn noktasından çıkar, kısa bir "map brief" alır ve saklanan eşyayı bulup çalarsa tur biter.
+* Saklayan, eşyayı ne kadar uzun saklarsa ve arayanları ne kadar "yakalar/işaretlerse" o kadar puan alır.
+* Arayanlar eşyayı ne kadar hızlı bulursa ve saklayanı/diğer hedefleri ne kadar iyi takip ederse puan alır.
+* 8 kişiyse 8 tur oynanır; herkes 1 kez saklayan olur. Toplam puan kazananı belirler.
+
+2) Tasarım Hedefleri
+1. Hızlı tempo: "Saklama 30-45 sn", "brief 10-15 sn", tur başına 2-4 dk hedef.
+2. Tekrarlanabilirlik: Malzeme sürekli değişir + birden fazla map + farklı saklama noktaları.
+3. Anti-camp / adil karşılaşma: Saklayan eşyanın başında bekleyip arayanı "bedavaya" düşürmemeli.
+4. Mizah/aksiyon: Tuzaklar, kısa yetenek pencereleri, risk-ödül.
+5. Skor şeffaflığı: Kim neyi neden aldı net.
+
+3) Oyuncu Rolleri
+3.1 Saklayan (Hider)
+Görev: Malzemeyi sakla, süreyi uzat, arayanları oyalayıp yakala/işaretle.
+Araçlar:
+* Tuzaklar: örn. "Dondurma Bombası (Freeze)", "Pencere Lazer Teli", "Ses tuzağı", "Sahte iz".
+* Kısa mobilite/kaçış: (opsiyonel) tek kullanımlık kısa sprint, kapı kilitleme vs.
+3.2 Arayan (Seekers)
+Görev: Eşyayı bul, çal ve turu bitir.
+Araçlar:
+* Ortak Maske Yeteneği: Tüm maskelerde ortak: 10 sn görünmezlik (detay aşağıda).
+* (Opsiyonel) İz sürme, kısa ping, drone vb. maskeye göre farklılaşır.
+
+4) Oyun Akışı (Core Loop)
+4.1 Tur Fazları
+1. Hazırlık / Malzeme Ataması (2-3 sn)
+* Sistem "malzemeyi" seçer (loot pool).
+* Saklayana HUD'de "Eşya Tipi + İpucu: saklanabilir yüzeyler" gösterilir.
+2. Saklama Fazı (30-45 sn)
+* Saklayan spawn'ına doğar.
+* Eşyayı saklar. Eşya her tur değiştiği için "önceden hazır kurulum" sınırlı.
+3. Arayan Spawn + Brief (Toplam 25-30 sn)
+* Arayanların spawn'ı "sokağın karşısı" gibi sabit bir nokta.
+* 15 sn yürüyüş ile giriş.
+* Map anlatımı 10-15 sn: (Harita özelinde kısa yönlendirme: 2-3 kritik bölge, riskli alan, kaçış koridoru)
+4. Arama / Çatışma Fazı (Tur süresi: ör. 2:30 - 4:00)
+* Arayanlar eşyayı arar.
+* Saklayan tuzak kurar, oyalama ve yakalama yapar.
+* Arayanlar eşyayı bulup çalarsa tur biter (Finish).
+5. Skor Ekranı (10 sn)
+* Kim ne puan aldı, özet.
+* Sonraki tur: sıradaki saklayan belirlenir.
+
+5) Malzeme (Loot) Sistemi
+5.1 Loot Pool Mantığı
+* Her tur rastgele 1 "malzeme" seçilir.
+* Malzemeler boyut/ağırlık/saklanabilirlik açısından kategorize edilir:
+Kategori A (Küçük): çekmece, saksı, ayakkabılık...
+Kategori B (Orta): dolap, koltuk altı, klima arkası...
+Kategori C (Büyük): depo, sahte panel, bodrum köşesi...
+5.2 Saklama Kuralları
+* "Saklama noktasının" bir interact alanı vardır.
+* Saklama animasyonu: 1.0-1.5 sn (risk penceresi).
+* Aynı noktaya arka arkaya saklama spam'ini engellemek için:
+o Saklama noktası cooldown (örn. 2 tur boyunca aynı noktaya aynı kategori eşya saklanamaz).
+
+6) Anti-Camp (Eşya Başında Bekleyip Avlama) Çözümleri
+Bu oyun için en kritik yer burası. Tek bir çözüm yetmez; katmanlı yapınca suistimal kapanıyor.
+6.1 "Çalma Anı Güvencesi" (Arayan lehine mikro pencere)
+Maske Ortak Yeteneği: 10 sn Görünmezlik
+* Tüm arayanlarda var.
+* Aktivasyon: cooldown örn. 45 sn.
+* Kısıtlar:
+o Görünmezken koşma: %10-15 daha gürültülü adım (denge).
+o Görünmezken etkileşim: "eşya çalma" yapılabilir ama 1.5 sn sürer.
+* Amaç: Eşyanın dibinde pusu varsa bile "tak diye alıp bitirme" şansı.
+6.2 "Eşya Yakınlığı Ceza Mekaniği" (Camp'ı direkt cezalandır)
+Hider Camp Penalty
+* Saklayan, eşyanın X metre (örn. 8m) yakınında Y saniyeden (örn. 12 sn) fazla kalırsa:
+1. Skor çarpanı düşer (saklama süresi puanı %50'ye iner)
+2. Eşyadan arayanlara "zayıf ipucu" yayılır (örn. arayan HUD'ında çok geniş bir yön oku / bölge highlight)
+* Saklayan uzaklaşınca sayaç sıfırlanır.
+Bu, "ben sakladım, dibinde bekleyeyim" davranışını sistematik olarak anlamsızlaştırır.
+6.3 "Eşya Çevresi Güvenli Etkileşim Halkası"
+Steal Zone Buffer (opsiyonel ama çok etkili)
+* Eşyanın bulunduğu noktada 1.5-2m yarıçaplı "steal zone" vardır.
+* Arayan bu zone'a girip "çalma" başlattığında:
+o Saklayan arayana 0.75 sn boyunca "tam etki" veremez (mini stagger/aim penalty gibi).
+* Hâlâ risk var ama "tek frame'de düşürme" engellenir.
+6.4 "Saklayan İz Bırakır" (Pusu kurma yerine hareket etmeye zorlar)
+* Saklayan eşya yakınında uzun kalırsa iz/ısı haritası oluşur:
+o arayanların minimap'inde çok zayıf bir "sıcaklık" efekti (tam konum değil, yönsel).
+6.5 "Tuzak Limitleri"
+* Tuzaklar güçlü olacaksa "eşya etrafına 5 tuzak yığma" engeli:
+o Eşya yakınında en fazla N tuzak (örn. 2) aktif olabilir.
+o Fazlası kurulamaz ya da etkisi zayıflar.
+
+7) Tuzaklar ve Karşı Oynanış
+7.1 Örnek Tuzaklar
+1. Dondurma Bombası (Freeze Pad)
+* Zemine atılır, 8 sn aktif kalır.
+* Basan oyuncu 1.25 sn yavaşlar + kısa "kayma".
+* Karşı oyun: Arayan "maske görünmezliği" ile geçebilir ama yine basarsa kayar.
+2. Pencere Lazer Teli
+* Geçince "alarm" verir: saklayana mini bildirim + arayana kısa kör etki.
+* Karşı oyun: Arayan "interact" ile 1 sn'de devre dışı bırakabilir.
+3. Ses Tuzağı
+* Sahte ayak sesi/kapı sesi üretir.
+* Karşı oyun: Arayanlar "aynı sesin tekrar" paterniyle öğrenir.
+4. Sahte Eşya İmzası (Decoy)
+* Arayanlara kısa süre yanlış yön gösterir.
+* Karşı oyun: Decoy yakınında "bozulma efekti" vardır, dikkatli oyuncu anlar.
+7.2 Tuzak Ekonomisi
+* Saklayan tura 2 tuzak token ile başlar.
+* Arayan yakaladıkça/puan aldıkça saklayan ekstra token kazanabilir (dengelemek için).
+* Tokenlar tur sonunda sıfırlanır (roguelite istemiyorsan).
+
+8) Yakalama / İşaretleme Sistemi (Sobe yerine)
+"Öldürme" yerine daha arcade ve dengeli bir terim/sistem öneriyorum: Yakala/İşaretle (Tag).
+8.1 Tag Mekaniği
+* Saklayan, arayana yakın mesafede "Tag" atabilir (örn. 3m).
+* Tag olan arayan:
+o 3 sn "revealed" (duvardan silüet değil; sadece minimap ping)
+o 2 sn boyunca "hız %10 düşer"
+* Amaç: Saklayan "koridor kontrolü" yapar, arayan "yakalanmamak" için rota değiştirir.
+8.2 Tag Limitleri
+* Saklayan arka arkaya spam atamasın:
+o cooldown 10 sn
+o aynı arayana 20 sn içinde ikinci tag yok (diminishing returns)
+
+9) Puanlama (Skor Sistemi)
+9.1 Saklayan Puanları
+* Saklama Süresi Puanı: her 10 sn = +X puan
+o Örn: 10 sn = 5 puan
+o 90 sn sakladı = 45 puan
+* Tag Puanı: tag başına +Y puan (örn. 8)
+* Tuzak Tetikleme: arayan tuzağa basarsa +Z (örn. 4)
+* Camp Penalty: eşya yakınında fazla kalırsa saklama puanı çarpanı düşer (bkz. 6.2)
+9.2 Arayan Puanları
+* Eşyayı Bulma/Çalma: ana ödül (örn. 60)
+* Hız Bonusu: kalan süreye göre (örn. her 10 sn kalan = +2)
+* Tuzak Devre Dışı: +5
+* Doğru İhbar: (opsiyonel) takım içi ping ile eşyaya en çok yaklaşmayı sağlayan oyuncuya +10 destek puanı
+9.3 Tur Bitirme Kuralı
+* Eşya çalınır çalınmaz: Tur biter (Finish)
+* (Opsiyonel alternatif) "Çaldıktan sonra teslim noktası" istenirse:
+o Çalan oyuncu teslim noktasına 15-25m götürür.
+o Bu, "son saniye çalındı ama kaçamadı" gibi drama katar; ancak tempo düşürür.
+o Sen "gerek yok, çalınca bitsin" dediğin için varsayılan: anında bitiş.
+
+10) Maç Yapısı
+10.1 Oyuncu Sayısı
+* Varsayılan: 8 oyuncu
+* 6-10 arası ölçeklenebilir.
+10.2 Tur Sayısı
+* Oyuncu sayısı kadar tur: N oyuncu = N tur
+* Her turda farklı bir saklayan.
+10.3 Kazanan
+* Tüm turlar sonunda Toplam Skor en yüksek olan kazanır.
+
+11) Harita Tasarımı
+11.1 Harita Tipleri (örnek)
+* Apartman Bloğu: alt kat-üst kat, merdiven kovası, çatı, bodrum
+* Küçük AVM: mağazalar, depo koridorları, güvenlik odası
+* Sanayi Deposu: geniş alan + kör noktalar + forklift koridorları
+11.2 Spawn ve Akış
+* Arayan spawn: "sokağın karşısı" sabit nokta
+* 15 sn yürüyüş: "giriş koridoru"
+* 10-15 sn map brief: ekranda 2-3 ikon + kısa metin + sesli anlatım (opsiyon)
+11.3 Saklama Noktası Yoğunluğu
+* Küçük map: 25-40 saklama noktası
+* Orta map: 50-70
+* Büyük map: 90+
+
+12) UI/UX
+12.1 Saklayan HUD
+* Saklama sayacı (30-45 sn)
+* Tuzak token sayısı
+* Camp uyarısı (eşya yakınında kaldığında "Risk: İpucu yayılıyor")
+12.2 Arayan HUD
+* Maske görünmezlik cooldown
+* "İpucu seviyesi" (oyun uzadıkça ipucu artabilir)
+* Tuzak uyarısı (tetiklenince ekranda küçük ikon)
+12.3 Skor Ekranı
+* Bu tur puanı kırılımı:
+o Saklayan: süre + tag + tuzak - camp cezası
+o Arayan: çalma + hız + devre dışı + destek
+
+13) Denge (Balancing) Kuralları
+* Saklayan çok güçlüyse: arayanlara ipucu artışı daha erken başlar.
+* Arayan çok güçlüyse: görünmezlik cooldown uzar veya çalma süresi 1.5→2.0 sn olur.
+* Tuzaklar çok sinir bozucu olursa:
+o "Aynı tuzağa 2. kez yakalanmada etki %50" (diminishing returns)
+
+14) Edge Case'ler ve Suistimal Önlemleri
+1. Eşya görünmez bug / erişilemez saklama
+* Her saklama noktası "navmesh reachable" testinden geçmeli.
+* Eşya duvar içine gömülürse auto-relocate.
+2. Kapı kilitleyip eşyayı soft-lock
+* Kilitler süreli (örn. 10 sn) ve arayan kırabilir.
+3. Camp + tuzak yığma
+* 6.2 + 6.5 birlikte çözüm.
+4. Arayan görünmezlik spam
+* Cooldown + kısa "görünmezlik sonrası 1 sn görünür gecikme" (çok gerekirse).
+
+15) MVP (İlk oynanabilir sürüm) Kapsamı
+MVP'de mutlaka olsun:
+* 1 harita (apartman) + 30-40 saklama noktası
+* 8 oyuncu / 8 tur
+* 1 loot pool (10 eşya)
+* Saklama 30-45 sn + brief 10-15 sn + arayan spawn yürüyüş 15 sn
+* Arayan ortak maske: 10 sn görünmezlik
+* 2 tuzak: Freeze + Lazer
+* Anti-camp: eşya yakınlığı cezası + tuzak limiti
+* Skor tablosu + toplam skor
+Sonra genişlet:
+* 3-5 map
+* Maske çeşitleri (ama ortak invis sabit)
+* Decoy, ses tuzağı, iz sürme gibi meta.
+
+16) Hızlı Sayı Önerisi (Başlangıç Dengesine uygun)
+* Saklama süresi: 35 sn (30-45 arası random)
+* Tur süresi: 3:00
+* Arayan invis: 10 sn, cooldown 45 sn
+* Çalma süresi: 1.5 sn
+* Camp radius: 8m
+* Camp threshold: 12 sn
+* Eşya yakınında max tuzak: 2
+* Puanlar:
+o Saklayan: 10 sn saklama = 5, tag = 8, tuzak tetik = 4
+o Arayan: çalma = 60, hız bonusu = kalan her 10 sn için +2, tuzak disable = 5
+
