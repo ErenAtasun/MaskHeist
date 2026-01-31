@@ -34,6 +34,12 @@ namespace MaskHeist.Network
         {
             // UI'ı aktif et
             Debug.Log("Lobiye giriş yapıldı.");
+
+            // TEST MODU: Odaya giren herkes otomatik READY olsun
+            if (isLocalPlayer)
+            {
+                CmdChangeReadyState(true);
+            }
         }
 
         public override void OnClientExitRoom()
