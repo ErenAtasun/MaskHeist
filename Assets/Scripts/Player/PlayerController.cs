@@ -65,19 +65,22 @@ public class PlayerController : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         
-        // Disable the scene's Main Camera to avoid 2 AudioListener warning
-        Camera mainCam = Camera.main;
-        if (mainCam != null && mainCam.gameObject != cameraTransform?.gameObject)
-        {
-            mainCam.gameObject.SetActive(false);
-        }
-        
+        // Eğer karakterin kendi kamerası varsa, sahnedeki ana kamerayı kapat
         if (cameraTransform != null)
         {
+            Camera mainCam = Camera.main;
+            if (mainCam != null && mainCam.gameObject != cameraTransform.gameObject)
+            {
+                mainCam.gameObject.SetActive(false);
+            }
+
             cameraTransform.gameObject.SetActive(true);
-            // AudioListener'ı da açmak gerekebilir
             var listener = cameraTransform.GetComponent<AudioListener>();
             if (listener) listener.enabled = true;
+        }
+        else
+        {
+            Debug.LogWarning("PlayerController: Bu karakterde kamera yok! Sahne kamerası kullanılmaya devam edilecek.");
         }
     }
 
