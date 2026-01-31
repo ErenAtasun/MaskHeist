@@ -3,6 +3,8 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using MaskHeist.Gameplay;
+using MaskHeist.Player;
 
 namespace MaskHeist.Core
 {
@@ -17,6 +19,7 @@ namespace MaskHeist.Core
         MatchEnd    // Maç sonu
     }
 
+    [RequireComponent(typeof(NetworkIdentity))]
     public class GameFlowManager : NetworkBehaviour
     {
         [Header("Game State")]
@@ -27,6 +30,15 @@ namespace MaskHeist.Core
         public float hidingPhaseDuration = 45f;
         public float briefingPhaseDuration = 25f;
         public float seekingPhaseDuration = 180f; // 3 dakika
+
+        [Header("Hideable Item")]
+        [Tooltip("Prefab of the item Hider needs to hide")]
+        public GameObject hideableItemPrefab;
+        [Tooltip("How far in front of Hider to spawn the item")]
+        public float itemSpawnDistance = 2f;
+
+        // Reference to spawned item
+        private HideableItem spawnedItem;
 
         private void Start()
         {
@@ -52,6 +64,10 @@ namespace MaskHeist.Core
             currentPhase = GamePhase.Hiding;
             phaseEndTime = NetworkTime.time + hidingPhaseDuration;
             Debug.Log("Faz: Hiding - Saklayan saklanıyor...");
+            
+            // Spawn hideable item for Hider
+            SpawnHideableItem();
+            
             RpcUpdatePhase(currentPhase);
             // Burada Arayanları kör et veya spawn'da kilitle
             yield return new WaitForSeconds(hidingPhaseDuration);
@@ -71,6 +87,46 @@ namespace MaskHeist.Core
             
             // Seeking fazı süre bitene kadar veya eşya bulunana kadar sürer
             // Buradaki kontrolü Update içinde veya event ile yapacağız.
+        }
+
+        [Server]
+        void SpawnHideableItem()
+        {
+            if (hideableItemPrefab == null)
+            {
+                Debug.LogWarning("[GameFlowManager] Hideable item prefab not assigned!");
+                return;
+            }
+
+            // Find the Hider
+            var hider = FindObjectsOfType<MaskHeistGamePlayer>()
+                .FirstOrDefault(p => p.role == PlayerRole.Hider);
+
+            if (hider == null)
+            {
+                Debug.LogWarning("[GameFlowManager] No Hider found to spawn item for!");
+                return;
+            }
+
+            // Calculate spawn position in front of Hider
+            Vector3 spawnPos = hider.transform.position 
+                             + hider.transform.forward * itemSpawnDistance 
+                             + Vector3.up * 1f;
+
+            // Spawn the item
+            GameObject itemObj = Instantiate(hideableItemPrefab, spawnPos, Quaternion.identity);
+            NetworkServer.Spawn(itemObj);
+
+            spawnedItem = itemObj.GetComponent<HideableItem>();
+
+            Debug.Log($"[GameFlowManager] Hideable item spawned for {hider.displayName} at {spawnPos}");
+
+            // Notify the Hider
+            var placementController = hider.GetComponent<ItemPlacementController>();
+            if (placementController != null)
+            {
+                placementController.TargetNotifyItemSpawned(hider.connectionToClient, itemObj);
+            }
         }
 
         [Server]

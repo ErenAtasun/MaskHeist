@@ -16,6 +16,7 @@ namespace MaskHeist.Player
         private IInteractable currentInteractable;
         private IInteractable previousInteractable;
         private Camera playerCamera;
+        private ItemPlacementController itemPlacement;
 
         private void Reset()
         {
@@ -31,6 +32,7 @@ namespace MaskHeist.Player
                 cameraTransform = GetComponentInChildren<Camera>()?.transform;
                 
             playerCamera = cameraTransform != null ? cameraTransform.GetComponent<Camera>() : null;
+            itemPlacement = GetComponent<ItemPlacementController>();
             
             // Eğer layer seçilmemişse varsayılanı kullan
             if (interactionLayer == 0) 
@@ -43,7 +45,10 @@ namespace MaskHeist.Player
 
             CheckForInteractable();
 
-            if (Mouse.current.leftButton.wasPressedThisFrame)
+            // Only interact if NOT holding an item (avoid conflict with ItemPlacementController)
+            bool isHoldingItem = itemPlacement != null && itemPlacement.IsHoldingItem;
+            
+            if (!isHoldingItem && Mouse.current.leftButton.wasPressedThisFrame)
             {
                 TryInteract();
             }
