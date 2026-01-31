@@ -27,7 +27,7 @@ namespace MaskHeist.Player
         private Vector3 startPos;
         private Collider col;
 
-        public string InteractionPrompt => "[E] Silahı Al";
+        public string InteractionPrompt => "[SPACE] Silahı Al";
 
         private void Awake()
         {

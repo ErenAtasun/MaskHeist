@@ -11,7 +11,7 @@ namespace MaskHeist.Player
     public class AmmoPickup : NetworkBehaviour, IInteractable
     {
         [Header("Settings")]
-        [SerializeField] private int ammoAmount = 2;
+        [SerializeField] private int ammoAmount = 1;
 
         [Header("Visuals")]
         [SerializeField] private GameObject visualModel;

@@ -69,11 +69,18 @@ namespace MaskHeist.Player
         {
             if (!isLocalPlayer) return;
 
-            // Only Hider can shoot
+            // Only Hider can use weapon
             if (gamePlayer == null || gamePlayer.role != PlayerRole.Hider) return;
 
-            // Must have weapon to use
-            if (!hasWeapon) return;
+            // If no weapon yet, SPACE tries to pick up weapon
+            if (!hasWeapon)
+            {
+                if (Input.GetKeyDown(KeyCode.Space))
+                {
+                    TryPickupWeapon();
+                }
+                return;
+            }
 
             // Check for ammo pickup (Right-click)
             if (Input.GetMouseButtonDown(1))
@@ -86,6 +93,36 @@ namespace MaskHeist.Player
             if (!isHoldingItem && Input.GetKeyDown(KeyCode.Space))
             {
                 TryShoot();
+            }
+        }
+
+        private void TryPickupWeapon()
+        {
+            if (playerCamera == null) return;
+
+            Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit, pickupDistance))
+            {
+                WeaponPickup weaponPickup = hit.collider.GetComponent<WeaponPickup>();
+                if (weaponPickup != null)
+                {
+                    CmdPickupWeapon(weaponPickup.gameObject);
+                }
+            }
+        }
+
+        [Command]
+        private void CmdPickupWeapon(GameObject weaponObject)
+        {
+            if (weaponObject == null) return;
+
+            WeaponPickup pickup = weaponObject.GetComponent<WeaponPickup>();
+            if (pickup != null)
+            {
+                // Trigger pickup through IInteractable
+                pickup.OnInteract(gameObject);
             }
         }
 
