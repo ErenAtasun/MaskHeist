@@ -8,6 +8,21 @@ namespace MaskHeist.Network
         [SyncVar]
         public string displayName = "Player";
 
+        public override void OnStartLocalPlayer()
+        {
+            // İsim bilgisini PlayerPrefs'ten al ve sunucuya gönder
+            string savedName = PlayerPrefs.GetString("PlayerName", "Player" + Random.Range(100, 999));
+            CmdSetDisplayName(savedName);
+            
+            base.OnStartLocalPlayer();
+        }
+
+        [Command]
+        public void CmdSetDisplayName(string name)
+        {
+            displayName = name;
+        }
+
         public override void OnStartClient()
         {
             // Oyuncu lobiye girdiğinde yapılacaklar
