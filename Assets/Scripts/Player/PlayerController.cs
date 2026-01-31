@@ -65,6 +65,13 @@ public class PlayerController : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
         
+        // Disable the scene's Main Camera to avoid 2 AudioListener warning
+        Camera mainCam = Camera.main;
+        if (mainCam != null && mainCam.gameObject != cameraTransform?.gameObject)
+        {
+            mainCam.gameObject.SetActive(false);
+        }
+        
         if (cameraTransform != null)
         {
             cameraTransform.gameObject.SetActive(true);
