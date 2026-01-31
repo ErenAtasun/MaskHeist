@@ -1,5 +1,6 @@
 using Mirror;
 using UnityEngine;
+using MaskHeist.Core;
 
 namespace MaskHeist.Gameplay
 {
@@ -152,6 +153,9 @@ namespace MaskHeist.Gameplay
                 rb.isKinematic = false;
                 rb.useGravity = true;
             }
+
+            // Note: Hider does NOT get points for placing
+            // Only Seeker gets points when finding the item
 
             Debug.Log($"[HideableItem] {ItemName} placed at {transform.position}");
         }

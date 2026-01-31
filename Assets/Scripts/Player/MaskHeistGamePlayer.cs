@@ -33,8 +33,19 @@ namespace MaskHeist.Core
             // Burada UI güncellemesi veya karakter model değişimi tetiklenebilir
             if (isLocalPlayer)
             {
-                // Local player için HUD güncelle
-                Debug.Log($"Benim yeni rolüm: {newRole}");
+                // Clear console message for player role
+                string roleMessage = newRole switch
+                {
+                    PlayerRole.Hider => "========== SEN HIDER (SAKLAYAN) OLDUN ==========\n" +
+                                       "Görev: Eşyayı al ve haritada sakla!\n" +
+                                       "Kontrol: Sol Tık basılı tut = Taşı, Bırak = Yerleştir",
+                    PlayerRole.Seeker => "========== SEN SEEKER (ARAYAN) OLDUN ==========\n" +
+                                        "Görev: Saklanan eşyayı bul!\n" +
+                                        "Kontrol: SPACE = Eşyayı al, Maske yeteneği kullanabilirsin",
+                    _ => "Rol bekleniyor..."
+                };
+                
+                Debug.Log(roleMessage);
             }
         }
     }

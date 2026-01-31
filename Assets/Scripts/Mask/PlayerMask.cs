@@ -1,5 +1,6 @@
 using UnityEngine;
 using Mirror;
+using MaskHeist.Core;
 
 namespace MaskHeist.Mask
 {
@@ -37,6 +38,7 @@ namespace MaskHeist.Mask
         private float sprintCooldownEndTime = 0f;
         private float sprintSpeedMultiplier = 1.5f;
         private PlayerController playerController;
+        private MaskHeistGamePlayer gamePlayer;
         
         private GameObject currentMaskModel;
         private MaskPickup currentMaskPickup;
@@ -58,6 +60,7 @@ namespace MaskHeist.Mask
         {
             invisibilityEffect = gameObject.AddComponent<InvisibilityEffect>();
             playerController = GetComponent<PlayerController>();
+            gamePlayer = GetComponent<MaskHeistGamePlayer>();
         }
         
         public override void OnStartLocalPlayer()
@@ -80,6 +83,9 @@ namespace MaskHeist.Mask
             if (netIdentity == null) return;
             if (!isLocalPlayer) return;
             if (CurrentMask == null) return;
+            
+            // Only Seeker can use mask abilities
+            if (gamePlayer == null || gamePlayer.role != PlayerRole.Seeker) return;
             
             // E = Invisibility (all masks)
             if (Input.GetKeyDown(KeyCode.E))
