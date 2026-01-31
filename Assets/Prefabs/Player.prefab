@@ -156,6 +156,11 @@ GameObject:
   - component: {fileID: 3704516176326364092}
   - component: {fileID: 7033645862383977179}
   - component: {fileID: 8667478913467878782}
+  - component: {fileID: 4079013927279777525}
+  - component: {fileID: -2212478776537156494}
+  - component: {fileID: -5613875719378040179}
+  - component: {fileID: 1493676353193151473}
+  - component: {fileID: 5619729286150928365}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -413,3 +418,106 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   cameraTransform: {fileID: 0}
+--- !u!114 &4079013927279777525
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7585614515399806500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17f62b8c9f58e5f4fa3c998ce2f6125d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  findDistance: 3
+  itemLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  cameraTransform: {fileID: 0}
+  findPrompt: "[SPACE] E\u015Fyay\u0131 Al"
+--- !u!114 &-2212478776537156494
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7585614515399806500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bef6edb95a694f5499b5c1b7a79fbb0e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  startingAmmo: 3
+  maxAmmo: 10
+  fireRate: 0.5
+  range: 50
+  pickupDistance: 3
+  cameraTransform: {fileID: 0}
+  shootableLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  ammoLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  muzzleFlashPrefab: {fileID: 0}
+  hitEffectPrefab: {fileID: 0}
+--- !u!114 &-5613875719378040179
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7585614515399806500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32afd1217cf2ae34abef20e21bca5cb3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  disableOnDeath: []
+  disableScriptsOnDeath: []
+--- !u!114 &1493676353193151473
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7585614515399806500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 639adc62bcb1daa4a84357ee3caa6463, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  followDistance: 5
+  followHeight: 2
+  followSmoothness: 5
+  spectatingPrefix: "\u0130zleniyor: "
+--- !u!114 &5619729286150928365
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7585614515399806500}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d466cae129f7e247acf6915741ff4ab, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  role: 1
+  displayName: Player

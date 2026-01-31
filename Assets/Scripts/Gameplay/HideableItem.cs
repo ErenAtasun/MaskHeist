@@ -154,11 +154,8 @@ namespace MaskHeist.Gameplay
                 rb.useGravity = true;
             }
 
-            // Award score for hiding item
-            if (ScoreManager.Instance != null)
-            {
-                ScoreManager.Instance.OnItemHidden();
-            }
+            // Note: Hider does NOT get points for placing
+            // Only Seeker gets points when finding the item
 
             Debug.Log($"[HideableItem] {ItemName} placed at {transform.position}");
         }
