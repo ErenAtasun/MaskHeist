@@ -42,6 +42,16 @@ namespace MaskHeist.UI
             FindUIReferences();
         }
 
+        private void Start()
+        {
+            // Ensure all panels are hidden at start
+            HideAllPanels();
+            
+            // Lock cursor for gameplay
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+
         private void Update()
         {
             // ESC key for pause menu
