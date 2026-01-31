@@ -1,5 +1,6 @@
 using Mirror;
 using UnityEngine;
+using MaskHeist.Traps;
 
 namespace MaskHeist.Core
 {
@@ -10,6 +11,7 @@ namespace MaskHeist.Core
         Seeker
     }
 
+    [RequireComponent(typeof(PlayerTrapInventory))]
     public class MaskHeistGamePlayer : NetworkBehaviour
     {
         [SyncVar(hook = nameof(OnRoleChanged))]

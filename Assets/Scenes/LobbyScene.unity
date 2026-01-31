@@ -2139,7 +2139,8 @@ MonoBehaviour:
   playerPrefab: {fileID: 7585614515399806500, guid: e3dc1880f08a03142bfab0c278d4dee2, type: 3}
   autoCreatePlayer: 1
   playerSpawnMethod: 0
-  spawnPrefabs: []
+  spawnPrefabs:
+  - {fileID: 1526764056114885775, guid: 4e3c1fe261d24fe41a4c9cdc8e621c91, type: 3}
   exceptionsDisconnect: 1
   snapshotSettings:
     bufferTimeMultiplier: 2
@@ -2159,7 +2160,7 @@ MonoBehaviour:
   minPlayers: 1
   roomPlayerPrefab: {fileID: 1870097712290148048, guid: ca70e4319bd670745845c478e213655a, type: 3}
   RoomScene: Assets/Scenes/LobbyScene.unity
-  GameplayScene: Assets/Scenes/Mainscene.unity
+  GameplayScene: Assets/Scenes/SampleScene.unity
   _allPlayersReady: 0
   clientIndex: 0
   minPlayersToStart: 1
