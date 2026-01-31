@@ -1,6 +1,7 @@
 using Mirror;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using MaskHeist.Core;
 
 namespace MaskHeist.Network
 {
@@ -10,7 +11,13 @@ namespace MaskHeist.Network
     {
         [Header("MaskHeist Settings")]
         [Tooltip("Minimum oyuncu sayısı (GDD: 6-10 arası, varsayılan 8)")]
-        public int minPlayersToStart = 2; // Test için 2 yapıyoruz, sonra 6-8 yaparız.
+        public int minPlayersToStart = 1; // Test için 1 yaptık (Normalde 2 olmalı).
+
+        public override void OnStartServer()
+        {
+            base.OnStartServer();
+            Debug.Log($"[MaskHeist] Sunucu Başladı! Min Player: {minPlayersToStart}");
+        }
 
         // Sunucu başladığında çalışır
         public override void OnRoomStartServer()
@@ -36,13 +43,15 @@ namespace MaskHeist.Network
             // Burası kritik: Oyuncu lobiden oyun sahnesine geçtiğinde,
             // RoomPlayer'daki bilgileri (seçilen maske, isim vb.) GamePlayer'a aktaracağız.
             
-            /* Örnek:
             MaskHeistGamePlayer gamePlayerScript = gamePlayer.GetComponent<MaskHeistGamePlayer>();
             MaskHeistRoomPlayer roomPlayerScript = roomPlayer.GetComponent<MaskHeistRoomPlayer>();
             
-            gamePlayerScript.displayName = roomPlayerScript.displayName;
-            gamePlayerScript.role = ... (Burada Hider/Seeker ataması yapacağız)
-            */
+            if (gamePlayerScript != null && roomPlayerScript != null)
+            {
+                gamePlayerScript.displayName = roomPlayerScript.displayName;
+                // Rol daha sonra GameFlowManager tarafından atanacak
+                gamePlayerScript.role = PlayerRole.None; 
+            }
 
             return base.OnRoomServerSceneLoadedForPlayer(conn, roomPlayer, gamePlayer);
         }

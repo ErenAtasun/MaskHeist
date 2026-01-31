@@ -1,6 +1,8 @@
 using Mirror;
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace MaskHeist.Core
 {
@@ -74,9 +76,37 @@ namespace MaskHeist.Core
         [Server]
         void AssignRoles()
         {
+            // Tüm oyuncuları bul
+            var players = FindObjectsOfType<MaskHeistGamePlayer>().ToList();
+            
+            if (players.Count == 0)
+            {
+                Debug.LogWarning("Rol dağıtılacak oyuncu bulunamadı!");
+                return;
+            }
+
+            Debug.Log($"Roller dağıtılıyor. Toplam Oyuncu: {players.Count}");
+
+            // Listeyi karıştır (Shuffle)
+            for (int i = 0; i < players.Count; i++)
+            {
+                MaskHeistGamePlayer temp = players[i];
+                int randomIndex = Random.Range(i, players.Count);
+                players[i] = players[randomIndex];
+                players[randomIndex] = temp;
+            }
+
             // GDD Madde 3: Her tur 1 Hider, diğerleri Seeker
-            // Bu mantığı burada kuracağız.
-            Debug.Log("Roller atandı (TODO)");
+            // İlk oyuncuyu Hider yap
+            players[0].role = PlayerRole.Hider;
+            Debug.Log($"Hider Seçildi: {players[0].displayName} (NetID: {players[0].netId})");
+
+            // Geri kalanları Seeker yap
+            for (int i = 1; i < players.Count; i++)
+            {
+                players[i].role = PlayerRole.Seeker;
+                Debug.Log($"Seeker Atandı: {players[i].displayName} (NetID: {players[i].netId})");
+            }
         }
 
         [ClientRpc]
