@@ -2,6 +2,7 @@ using Mirror;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using MaskHeist.Interaction;
+using MaskHeist.UI;
 
 namespace MaskHeist.Player
 {
@@ -13,6 +14,7 @@ namespace MaskHeist.Player
         [SerializeField] private Transform cameraTransform;
 
         private IInteractable currentInteractable;
+        private IInteractable previousInteractable;
         private Camera playerCamera;
 
         private void Reset()
@@ -61,17 +63,32 @@ namespace MaskHeist.Player
                 if (interactable != null && interactable.CanInteract(gameObject))
                 {
                     currentInteractable = interactable;
-                    // TODO: Show UI prompt (e.g. "Press Left Click to Pickup")
-                    // Debug.Log($"Looking at: {interactable.InteractionPrompt}");
+                    
+                    // Trigger UI event when interactable changes
+                    if (currentInteractable != previousInteractable)
+                    {
+                        UIEvents.TriggerInteractableChanged(interactable.InteractionPrompt);
+                        previousInteractable = currentInteractable;
+                    }
                 }
                 else
                 {
-                    currentInteractable = null;
+                    ClearInteractable();
                 }
             }
             else
             {
+                ClearInteractable();
+            }
+        }
+
+        private void ClearInteractable()
+        {
+            if (currentInteractable != null || previousInteractable != null)
+            {
                 currentInteractable = null;
+                previousInteractable = null;
+                UIEvents.TriggerInteractableChanged(null);
             }
         }
 
