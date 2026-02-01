@@ -64,6 +64,55 @@ public class PrefabFixer
                 go.AddComponent<Mirror.NetworkTransformReliable>();
                 Debug.Log($"✅ NetworkTransformReliable eklendi: {path}");
             }
+
+            // 4. WeaponController Setup (Assets/Scripts/Player/WeaponController.cs)
+            MaskHeist.Player.WeaponController weaponController = go.GetComponent<MaskHeist.Player.WeaponController>();
+            if (weaponController != null)
+            {
+                // Load assets
+                string weaponPath = "Assets/Low Poly ShotGun Weapon Pack 1/Prefabs/Weapons/ShotGun_E.prefab";
+                string bulletPath = "Assets/Low Poly ShotGun Weapon Pack 1/Prefabs/Bullets/Bullet_ShotGun_A.prefab";
+                
+                GameObject weaponPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(weaponPath);
+                GameObject bulletPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(bulletPath);
+
+                if (weaponPrefab != null && bulletPrefab != null)
+                {
+                    SerializedObject so = new SerializedObject(weaponController);
+                    so.Update();
+                    
+                    SerializedProperty weaponProp = so.FindProperty("weaponModelPrefab");
+                    SerializedProperty bulletProp = so.FindProperty("bulletPrefab");
+                    SerializedProperty holderProp = so.FindProperty("weaponHolder");
+                    
+                    if (weaponProp != null) weaponProp.objectReferenceValue = weaponPrefab;
+                    if (bulletProp != null) bulletProp.objectReferenceValue = bulletPrefab;
+                    
+                    // Create/Assign WeaponHolder
+                    Transform camTransform = go.GetComponentInChildren<Camera>()?.transform;
+                    if (camTransform != null)
+                    {
+                        Transform holder = camTransform.Find("WeaponHolder");
+                        if (holder == null)
+                        {
+                            GameObject holderGO = new GameObject("WeaponHolder");
+                            holderGO.transform.SetParent(camTransform);
+                            holderGO.transform.localPosition = Vector3.zero;
+                            holderGO.transform.localRotation = Quaternion.identity;
+                            holder = holderGO.transform;
+                            Debug.Log("✅ WeaponHolder created.");
+                        }
+                        if (holderProp != null) holderProp.objectReferenceValue = holder;
+                    }
+
+                    so.ApplyModifiedProperties();
+                    Debug.Log($"✅ WeaponController assets assigned: {path}");
+                }
+                else
+                {
+                    Debug.LogError($"❌ Weapon/Bullet assets not found! Checked: {weaponPath}");
+                }
+            }
         }
     }
 }

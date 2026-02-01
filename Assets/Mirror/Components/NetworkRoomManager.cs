@@ -222,6 +222,8 @@ namespace Mirror
         /// <param name="conn">Connection from client.</param>
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
+            if (conn == null) return;
+
             if (conn.identity != null)
             {
                 NetworkRoomPlayer roomPlayer = conn.identity.GetComponent<NetworkRoomPlayer>();
