@@ -25,6 +25,7 @@ namespace MaskHeist.UI
         private RectTransform scoreTransform;
         private float punchTimer;
         private float deltaFadeTimer;
+        private string currentRole;
 
         private void Awake()
         {

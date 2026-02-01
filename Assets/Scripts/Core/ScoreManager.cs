@@ -34,6 +34,9 @@ namespace MaskHeist.Core
 
         // Events for UI updates
         public System.Action<int, int> OnScoreUpdated; // (score, delta)
+        
+        // Event for GameFlowManager to know when item is found
+        public System.Action OnItemFoundEvent;
 
         private void Awake()
         {
