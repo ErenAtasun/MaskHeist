@@ -40,18 +40,33 @@ namespace MaskHeist.UI.Lobby
             if (joinButton) joinButton.onClick.AddListener(OnJoinClicked);
         }
 
+        private bool wasConnecting = false;
+        
         private void Update()
         {
             if (manager == null || statusText == null) return;
+            
+            // Bağlantı durumu takibi
+            bool isConnecting = NetworkClient.active && !NetworkClient.isConnected;
+            if (isConnecting && !wasConnecting)
+            {
+                Debug.Log($"[LobbyUI] NetworkClient.active={NetworkClient.active}, isConnected={NetworkClient.isConnected}");
+                Debug.Log($"[LobbyUI] Transport: {manager.transport?.GetType().Name}");
+            }
+            wasConnecting = isConnecting;
             
             // Basit durum bilgilendirmesi
             if (NetworkServer.active && NetworkClient.active)
             {
                 statusText.text = $"Host (Server + Client) Running... ({manager.networkAddress})";
             }
-            else if (NetworkClient.active)
+            else if (NetworkClient.isConnected)
             {
                 statusText.text = $"Client Connected to {manager.networkAddress}";
+            }
+            else if (NetworkClient.active)
+            {
+                statusText.text = $"Connecting to {manager.networkAddress}...";
             }
         }
 
@@ -66,8 +81,10 @@ namespace MaskHeist.UI.Lobby
 
             PlayerPrefs.SetString("PlayerName", playerName);
             
+            // Local test için host her zaman localhost olmalı
+            manager.networkAddress = "localhost";
             manager.StartHost();
-            statusText.text = "Starting Host...";
+            statusText.text = "Starting Host (localhost)...";
         }
 
         private void OnJoinClicked()
@@ -84,9 +101,22 @@ namespace MaskHeist.UI.Lobby
 
             PlayerPrefs.SetString("PlayerName", playerName);
             
+            // Debug: Bağlantı bilgilerini logla
+            Debug.Log($"[LobbyUI] Bağlantı girişimi başlatılıyor...");
+            Debug.Log($"[LobbyUI] Hedef IP: {ip}");
+            
+            if (manager.transport is kcp2k.KcpTransport kcp)
+            {
+                Debug.Log($"[LobbyUI] Transport: KCP, Port: {kcp.Port}");
+                statusText.text = $"Connecting to {ip}:{kcp.Port}...";
+            }
+            else
+            {
+                statusText.text = $"Connecting to {ip}...";
+            }
+            
             manager.networkAddress = ip;
             manager.StartClient();
-            statusText.text = $"Connecting to {ip}...";
         }
     }
 }

@@ -2035,6 +2035,22 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 6712455278405722842, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
+      propertyPath: port
+      value: 7777
+      objectReference: {fileID: 0}
+    - target: {fileID: 6712455278405722842, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
+      propertyPath: Timeout
+      value: 10000
+      objectReference: {fileID: 0}
+    - target: {fileID: 6712455278405722842, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
+      propertyPath: DualMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6712455278405722842, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6902534888765376181, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
       propertyPath: m_Name
       value: NetworkManager
@@ -2080,7 +2096,7 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents:
-    - {fileID: 6902534888765376180, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
+    - {fileID: 6712455278405722842, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
@@ -2090,6 +2106,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6902534888765376181, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1835598088}
+    - targetCorrespondingSourceObject: {fileID: 6902534888765376181, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1835598092}
   m_SourcePrefab: {fileID: 100100000, guid: 62d3b9c46c08c934ea2ac02811b3028d, type: 3}
 --- !u!1 &1835598087 stripped
 GameObject:
@@ -2130,7 +2149,7 @@ MonoBehaviour:
   offlineScene: 
   onlineScene: 
   offlineSceneLoadDelay: 0
-  transport: {fileID: 0}
+  transport: {fileID: 1835598092}
   networkAddress: localhost
   maxConnections: 100
   disconnectInactiveConnections: 0
@@ -2141,6 +2160,15 @@ MonoBehaviour:
   playerSpawnMethod: 0
   spawnPrefabs:
   - {fileID: 1526764056114885775, guid: 4e3c1fe261d24fe41a4c9cdc8e621c91, type: 3}
+  - {fileID: 3140969184146055156, guid: ca70e4319bd670745845c478e213655a, type: 3}
+  - {fileID: 8304748314302065422, guid: d0f35b5055abb0a4c9be6c06375c5ada, type: 3}
+  - {fileID: 999083217439416990, guid: 8f7bc97969cb3cd499acd703fcb674ac, type: 3}
+  - {fileID: 2707400305429134334, guid: c5b685431d9cc3144977f44899074189, type: 3}
+  - {fileID: 2366598238052145355, guid: 3c42d5d3fe83de0499ad0a8f502f99d1, type: 3}
+  - {fileID: 2737966581004504101, guid: ca903e51ed01cba4b9c7f901e1834604, type: 3}
+  - {fileID: 8776841258079617034, guid: dad999cc0aa46c34283c2d47719cb60a, type: 3}
+  - {fileID: 8139067140522568671, guid: bb86b2405eb095b49a2fc9f6730c02a7, type: 3}
+  - {fileID: 7853010533415448887, guid: ba5fdf46e2dcf8e44908266f69d7657a, type: 3}
   exceptionsDisconnect: 1
   snapshotSettings:
     bufferTimeMultiplier: 2
@@ -2158,12 +2186,41 @@ MonoBehaviour:
   timeInterpolationGui: 0
   showRoomGUI: 1
   minPlayers: 1
-  roomPlayerPrefab: {fileID: 1870097712290148048, guid: ca70e4319bd670745845c478e213655a, type: 3}
+  roomPlayerPrefab: {fileID: 114033720796874720, guid: deae2134a1d77704b9c595efe69767dd, type: 3}
   RoomScene: Assets/Scenes/LobbyScene.unity
   GameplayScene: Assets/Scenes/Mainscene.unity
   _allPlayersReady: 0
   clientIndex: 0
-  minPlayersToStart: 1
+  minPlayersToStart: 2
+--- !u!114 &1835598092
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1835598087}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b0fecffa3f624585964b0d0eb21b18e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  port: 7777
+  DualMode: 1
+  NoDelay: 1
+  Interval: 10
+  Timeout: 10000
+  RecvBufferSize: 7361536
+  SendBufferSize: 7361536
+  FastResend: 2
+  ReceiveWindowSize: 4096
+  SendWindowSize: 4096
+  MaxRetransmit: 40
+  MaximizeSocketBuffers: 1
+  ReliableMaxMessageSize: 297433
+  UnreliableMaxMessageSize: 1194
+  debugLog: 0
+  statisticsGUI: 0
+  statisticsLog: 0
 --- !u!1 &1978711214
 GameObject:
   m_ObjectHideFlags: 0

@@ -25,9 +25,11 @@ namespace MaskHeist.Network
 
         public override void OnStartClient()
         {
+            base.OnStartClient();
+            
             // Oyuncu lobiye girdiğinde yapılacaklar
             // Örn: UI'da ismini güncelle
-            Debug.Log($"Oyuncu lobiye girdi: {index}");
+            Debug.Log($"[RoomPlayer] Oyuncu lobiye girdi: {index}, netId: {netId}");
         }
 
         public override void OnClientEnterRoom()
