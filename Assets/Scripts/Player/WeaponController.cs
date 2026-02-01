@@ -305,14 +305,30 @@ namespace MaskHeist.Player
         private void OnAmmoChanged(int oldVal, int newVal)
         {
             Debug.Log($"[Weapon] Ammo: {newVal}/{maxAmmo}");
-            // Update UI here if needed
-            UIEvents.TriggerScoreChanged(newVal, newVal - oldVal); // Temporary - use ammo UI later
+            
+            // Trigger ammo UI update
+            if (isLocalPlayer)
+            {
+                UIEvents.TriggerAmmoChanged(newVal, maxAmmo);
+            }
         }
 
         private void OnWeaponEquipped(bool wasEquipped, bool isEquipped)
         {
             hasWeapon = isEquipped;
             UpdateWeaponVisuals();
+            
+            // Trigger weapon UI update
+            if (isLocalPlayer)
+            {
+                UIEvents.TriggerWeaponEquipped(isEquipped);
+                
+                // Also update ammo display
+                if (isEquipped)
+                {
+                    UIEvents.TriggerAmmoChanged(currentAmmo, maxAmmo);
+                }
+            }
         }
 
         private void UpdateWeaponVisuals()

@@ -97,5 +97,29 @@ namespace MaskHeist.UI
         {
             OnLootCollected?.Invoke(lootName, scoreValue);
         }
+
+        // ==================== WEAPON/AMMO ====================
+        
+        /// <summary>
+        /// Fired when ammo count changes.
+        /// Parameters: current ammo, max ammo
+        /// </summary>
+        public static event Action<int, int> OnAmmoChanged;
+        
+        public static void TriggerAmmoChanged(int currentAmmo, int maxAmmo)
+        {
+            OnAmmoChanged?.Invoke(currentAmmo, maxAmmo);
+        }
+
+        /// <summary>
+        /// Fired when weapon is equipped or unequipped.
+        /// Parameter: true = has weapon
+        /// </summary>
+        public static event Action<bool> OnWeaponEquipped;
+        
+        public static void TriggerWeaponEquipped(bool hasWeapon)
+        {
+            OnWeaponEquipped?.Invoke(hasWeapon);
+        }
     }
 }
