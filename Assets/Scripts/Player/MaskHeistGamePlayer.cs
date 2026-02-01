@@ -46,6 +46,9 @@ namespace MaskHeist.Core
                 };
                 
                 Debug.Log(roleMessage);
+
+                // Update UI
+                MaskHeist.UI.UIEvents.TriggerRoleChanged(newRole.ToString());
             }
         }
     }

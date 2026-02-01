@@ -41,13 +41,35 @@ namespace MaskHeist.Core
         // Reference to spawned item
         private HideableItem spawnedItem;
 
+        private bool itemFound = false;
+
         private void Start()
         {
             // Sadece sunucu oyun akışını yönetir
             if (isServer)
             {
+                // Subscribe to events
+                if (ScoreManager.Instance != null)
+                {
+                    ScoreManager.Instance.OnItemFoundEvent += OnItemFoundHandler;
+                }
+                
                 StartCoroutine(GameLoop());
             }
+        }
+
+        public override void OnStopServer()
+        {
+            if (ScoreManager.Instance != null)
+            {
+                ScoreManager.Instance.OnItemFoundEvent -= OnItemFoundHandler;
+            }
+            base.OnStopServer();
+        }
+
+        private void OnItemFoundHandler()
+        {
+            itemFound = true;
         }
 
         IEnumerator GameLoop()
@@ -87,8 +109,78 @@ namespace MaskHeist.Core
             Debug.Log("Faz: Seeking - Oyun Başladı!");
             RpcUpdatePhase(currentPhase);
             
-            // Seeking fazı süre bitene kadar veya eşya bulunana kadar sürer
-            // Buradaki kontrolü Update içinde veya event ile yapacağız.
+            // Wait for time to run out OR item to be found
+            while (NetworkTime.time < phaseEndTime && !itemFound)
+            {
+                yield return null;
+            }
+
+            // Determine winner
+            PlayerRole winnerRole;
+            if (itemFound)
+            {
+                Debug.Log("Oyun Bitti: Eşya Bulundu! (Seeker Kazandı)");
+                winnerRole = PlayerRole.Seeker;
+            }
+            else
+            {
+                Debug.Log("Oyun Bitti: Süre Doldu! (Hider Kazandı)");
+                winnerRole = PlayerRole.Hider;
+            }
+
+            EndRound(winnerRole);
+        }
+
+        [Server]
+        private void EndRound(PlayerRole winnerRole)
+        {
+            currentPhase = GamePhase.RoundEnd;
+            RpcUpdatePhase(currentPhase);
+            RpcGameOver(winnerRole);
+
+            // Wait and restart round (Soft Reset)
+            StartCoroutine(RestartRoundRoutine());
+        }
+
+        [Server]
+        private IEnumerator RestartRoundRoutine()
+        {
+            yield return new WaitForSeconds(10f); // Show scoreboard for 10s
+
+            // Reset Game State
+            itemFound = false;
+            if (spawnedItem != null)
+            {
+                NetworkServer.Destroy(spawnedItem.gameObject);
+                spawnedItem = null;
+            }
+
+            // Clean up traps (Optional - requires tracking traps)
+            // ...
+
+            // Restart Loop
+            StartCoroutine(GameLoop());
+        }
+
+        [ClientRpc]
+        private void RpcGameOver(PlayerRole winnerRole)
+        {
+            // Find local player to check if we won
+            var localPlayer = NetworkClient.localPlayer?.GetComponent<MaskHeistGamePlayer>();
+            if (localPlayer != null)
+            {
+                bool amIWinner = localPlayer.role == winnerRole;
+                
+                // Seeker'lar takım olduğu için herhangi biri kazanınca hepsi kazanır
+                if (winnerRole == PlayerRole.Seeker && localPlayer.role == PlayerRole.Seeker)
+                    amIWinner = true;
+
+                // ScoreManager'dan o anki skoru alabiliriz (örnek: Hider skoru veya toplam skor)
+                // Şimdilik 0 gönderiyoruz, ScoreManager'dan çekilebilir.
+                int displayScore = 0; 
+                
+                UIEvents.TriggerGameOver(displayScore, amIWinner);
+            }
         }
 
         [Server]

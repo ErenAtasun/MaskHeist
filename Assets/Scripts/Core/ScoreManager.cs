@@ -95,6 +95,7 @@ namespace MaskHeist.Core
         public void OnItemFound()
         {
             AddSeekerScore(seekerFindPoints, "Eşya bulundu!");
+            OnItemFoundEvent?.Invoke();
         }
 
         /// <summary>

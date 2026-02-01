@@ -9,6 +9,19 @@ namespace MaskHeist.UI
     /// </summary>
     public static class UIEvents
     {
+        // ==================== PLAYER ====================
+        
+        /// <summary>
+        /// Fired when local player role changes.
+        /// Parameter: role name
+        /// </summary>
+        public static event Action<string> OnRoleChanged;
+        
+        public static void TriggerRoleChanged(string roleName)
+        {
+            OnRoleChanged?.Invoke(roleName);
+        }
+
         // ==================== INTERACTION ====================
         
         /// <summary>
