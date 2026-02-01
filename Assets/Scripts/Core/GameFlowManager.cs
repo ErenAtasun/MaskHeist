@@ -59,6 +59,25 @@ namespace MaskHeist.Core
             }
         }
 
+        private void Update()
+        {
+            // Client'lar timer'ı phaseEndTime'dan hesaplar
+            if (NetworkClient.active)
+            {
+                // Calculate remaining time from synced phaseEndTime
+                float remaining = (float)(phaseEndTime - NetworkTime.time);
+                if (remaining < 0) remaining = 0;
+                
+                // Only show timer during timed phases
+                if (currentPhase == GamePhase.Hiding || 
+                    currentPhase == GamePhase.Briefing || 
+                    currentPhase == GamePhase.Seeking)
+                {
+                    UIEvents.TriggerTimerUpdated(remaining);
+                }
+            }
+        }
+
         public override void OnStopServer()
         {
             if (ScoreManager.Instance != null)
