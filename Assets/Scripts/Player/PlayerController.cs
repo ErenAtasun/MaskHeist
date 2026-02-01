@@ -28,6 +28,10 @@ public class PlayerController : NetworkBehaviour
 
     // Components
     private CharacterController characterController;
+    private Animator animator;
+
+    // Animation state
+    private bool wasMoving = false;
 
     // State
     private Vector2 moveInput;
@@ -50,6 +54,16 @@ public class PlayerController : NetworkBehaviour
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
+        animator = GetComponentInChildren<Animator>();
+
+        if (animator == null)
+        {
+            Debug.LogWarning("PlayerController: Animator bulunamadı! Karakter modelinde Animator component olduğundan emin ol.");
+        }
+        else
+        {
+            Debug.Log($"PlayerController: Animator bulundu - {animator.gameObject.name}");
+        }
 
         if (cameraTransform == null)
         {
@@ -93,6 +107,12 @@ public class PlayerController : NetworkBehaviour
             var listener = cameraTransform.GetComponent<AudioListener>();
             if (listener) listener.enabled = false;
         }
+
+        // Başlangıçta idle animasyonunu başlat (T-pose önleme)
+        if (animator != null)
+        {
+            animator.SetTrigger("idle");
+        }
     }
 
     private void Update()
@@ -103,6 +123,25 @@ public class PlayerController : NetworkBehaviour
         HandleMovement();
         HandleLook();
         HandleCrouch();
+        UpdateAnimations();
+    }
+
+    private void UpdateAnimations()
+    {
+        if (animator == null) return;
+
+        bool isMoving = characterController.velocity.magnitude > 0.1f;
+
+        if (isMoving && !wasMoving)
+        {
+            animator.SetTrigger("run");  // Hareket başladı
+        }
+        else if (!isMoving && wasMoving)
+        {
+            animator.SetTrigger("idle"); // Durdu
+        }
+
+        wasMoving = isMoving;
     }
 
     private void HandleInput()
