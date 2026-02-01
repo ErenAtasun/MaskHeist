@@ -13,6 +13,18 @@ namespace MaskHeist.Network
         [Tooltip("Minimum oyuncu sayısı (GDD: 6-10 arası, varsayılan 8)")]
         public int minPlayersToStart = 1; // Test için 1 yaptık (Normalde 2 olmalı).
 
+        public override void Awake()
+        {
+            base.Awake();
+            
+            // Transport portunu garantiye al
+            if (transport is kcp2k.KcpTransport kcp)
+            {
+                kcp.Port = 25565;
+                Debug.Log($"[MaskHeist] KCP Transport Port set to: {kcp.Port}");
+            }
+        }
+
         public override void OnStartServer()
         {
             base.OnStartServer();
