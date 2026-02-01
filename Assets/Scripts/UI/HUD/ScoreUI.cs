@@ -43,12 +43,14 @@ namespace MaskHeist.UI
         {
             UIEvents.OnScoreChanged += HandleScoreChanged;
             UIEvents.OnLootCollected += HandleLootCollected;
+            UIEvents.OnRoleChanged += HandleRoleChanged;
         }
 
         private void OnDisable()
         {
             UIEvents.OnScoreChanged -= HandleScoreChanged;
             UIEvents.OnLootCollected -= HandleLootCollected;
+            UIEvents.OnRoleChanged -= HandleRoleChanged;
         }
 
         private void Update()
@@ -92,11 +94,25 @@ namespace MaskHeist.UI
             PlayPunchAnimation();
         }
 
+        private void HandleRoleChanged(string roleName)
+        {
+            currentRole = roleName;
+            UpdateDisplay(currentScore);
+        }
+
         private void UpdateDisplay(int score)
         {
             if (scoreText != null)
             {
-                scoreText.text = string.Format(scoreFormat, score);
+                if (string.IsNullOrEmpty(currentRole))
+                {
+                    scoreText.text = string.Format(scoreFormat, score);
+                }
+                else
+                {
+                    // Format: "Hider | Score: 100"
+                    scoreText.text = $"{currentRole} | {string.Format(scoreFormat, score)}";
+                }
             }
         }
 
