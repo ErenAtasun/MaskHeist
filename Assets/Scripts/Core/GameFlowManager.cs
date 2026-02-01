@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MaskHeist.Gameplay;
 using MaskHeist.Player;
+using MaskHeist.Spawn;
 
 namespace MaskHeist.Core
 {
@@ -57,6 +58,7 @@ namespace MaskHeist.Core
             currentPhase = GamePhase.Setup;
             Debug.Log("Faz: Setup - Roller Dağıtılıyor...");
             AssignRoles(); // Hider ve Seeker'ları seç
+            TeleportPlayersToSpawnPoints(); // Spawn noktalarına taşı
             RpcUpdatePhase(currentPhase);
             yield return new WaitForSeconds(3f);
 
@@ -170,6 +172,58 @@ namespace MaskHeist.Core
         {
             // Client'larda UI güncelleme, ses çalma vb.
             Debug.Log($"Client Faz Güncellemesi: {newPhase}");
+        }
+
+        [Server]
+        void TeleportPlayersToSpawnPoints()
+        {
+            if (SpawnPointManager.Instance == null)
+            {
+                Debug.LogWarning("[GameFlowManager] SpawnPointManager bulunamadı!");
+                return;
+            }
+
+            var players = FindObjectsOfType<MaskHeistGamePlayer>();
+            foreach (var player in players)
+            {
+                Vector3 spawnPos = SpawnPointManager.Instance.GetSpawnPosition(player.role);
+                Quaternion spawnRot = SpawnPointManager.Instance.GetSpawnRotation(player.role);
+
+                // Teleport player
+                player.transform.position = spawnPos;
+                player.transform.rotation = spawnRot;
+
+                // Notify client to update position
+                RpcTeleportPlayer(player.netIdentity, spawnPos, spawnRot);
+
+                Debug.Log($"[GameFlowManager] {player.displayName} ({player.role}) spawned at {spawnPos}");
+            }
+        }
+
+        [ClientRpc]
+        void RpcTeleportPlayer(NetworkIdentity playerIdentity, Vector3 position, Quaternion rotation)
+        {
+            if (playerIdentity == null) return;
+
+            playerIdentity.transform.position = position;
+            playerIdentity.transform.rotation = rotation;
+
+            // Reset velocity if has rigidbody
+            var rb = playerIdentity.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.linearVelocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+
+            // Reset CharacterController if present
+            var cc = playerIdentity.GetComponent<CharacterController>();
+            if (cc != null)
+            {
+                cc.enabled = false;
+                playerIdentity.transform.position = position;
+                cc.enabled = true;
+            }
         }
     }
 }
