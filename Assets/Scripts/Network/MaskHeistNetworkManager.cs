@@ -12,7 +12,7 @@ namespace MaskHeist.Network
     {
         [Header("MaskHeist Settings")]
         [Tooltip("Minimum oyuncu sayısı (GDD: 6-10 arası, varsayılan 8)")]
-        public int minPlayersToStart = 2; // Test için 1 yaptık (Normalde 2 olmalı).
+        public int minPlayersToStart = 1; // Test için 1 yaptık (Normalde 2 olmalı).
 
         public override void Awake()
         {

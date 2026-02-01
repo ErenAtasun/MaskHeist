@@ -343,6 +343,16 @@ namespace MaskHeist.Player
                         // Use assigned holder or fallback to camera
                         Transform parent = weaponHolder != null ? weaponHolder : cameraTransform;
                         
+                        // Clean up any existing children (like placeholder models) in the holder
+                        // This fixes the issue where a placeholder weapon (e.g. M4) remains visible
+                        if (parent.childCount > 0)
+                        {
+                            foreach (Transform child in parent)
+                            {
+                                Destroy(child.gameObject);
+                            }
+                        }
+                        
                         currentWeaponInstance = Instantiate(weaponModelPrefab, parent);
                         
                         // Set layer to match camera's culling mask (usually Default)

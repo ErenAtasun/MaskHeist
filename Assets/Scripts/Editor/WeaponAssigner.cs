@@ -20,8 +20,8 @@ namespace MaskHeist.Editor
                 return;
             }
 
-            // 2. Load Shotgun Model
-            string shotgunPath = "Assets/Low Poly ShotGun Weapon Pack 1/Models/Weapons/ShotGun_A.fbx";
+            // 2. Load Shotgun Model (Prefab is better than FBX)
+            string shotgunPath = "Assets/Low Poly ShotGun Weapon Pack 1/Prefabs/Weapons/ShotGun_E.prefab";
             GameObject shotgunModel = AssetDatabase.LoadAssetAtPath<GameObject>(shotgunPath);
 
             if (shotgunModel == null)
@@ -50,7 +50,7 @@ namespace MaskHeist.Editor
             {
                 prop.objectReferenceValue = shotgunModel;
                 so.ApplyModifiedProperties();
-                Debug.Log("Successfully assigned ShotGun_A.fbx to WeaponController.weaponModelPrefab");
+                Debug.Log("Successfully assigned ShotGun_E.prefab to WeaponController.weaponModelPrefab");
             }
             else
             {
