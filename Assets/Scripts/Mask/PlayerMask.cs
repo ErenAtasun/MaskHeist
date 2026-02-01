@@ -238,11 +238,35 @@ namespace MaskHeist.Mask
         
         public void EquipMaskDirect(MaskData maskData, MaskPickup pickup = null)
         {
+            Debug.Log($"EquipMaskDirect called - maskData: {maskData?.maskName}, pickup: {pickup}, isServer: {isServer}");
+            
             if (maskData != null)
             {
                 ReturnCurrentMask();
                 currentMaskPickup = pickup;
+                
+                // Sunucuda maske uygula
                 ApplyMask(maskData);
+                
+                // Tüm client'lara maske görselini göster
+                if (isServer)
+                {
+                    RpcShowMaskVisual();
+                }
+            }
+            else
+            {
+                Debug.LogWarning("EquipMaskDirect: maskData is NULL!");
+            }
+        }
+        
+        [ClientRpc]
+        private void RpcShowMaskVisual()
+        {
+            Debug.Log($"RpcShowMaskVisual called - CurrentMask: {CurrentMask?.maskName}");
+            if (CurrentMask != null)
+            {
+                SpawnMaskModel(CurrentMask);
             }
         }
         
@@ -298,16 +322,39 @@ namespace MaskHeist.Mask
         
         private void SpawnMaskModel(MaskData maskData)
         {
+            Debug.Log($"SpawnMaskModel - maskAttachPoint: {maskAttachPoint}");
+            
+            // Önce eski maskeyi temizle
             if (currentMaskModel != null)
             {
-                Destroy(currentMaskModel);
+                currentMaskModel.SetActive(false);
             }
             
-            if (maskData.maskPrefab != null && maskAttachPoint != null)
+            if (maskAttachPoint == null)
             {
+                Debug.LogWarning("SpawnMaskModel: maskAttachPoint is NULL! Set it in PlayerMask component.");
+                return;
+            }
+            
+            // maskAttachPoint'te zaten bir child maske var mı kontrol et
+            if (maskAttachPoint.childCount > 0)
+            {
+                // Mevcut child'ı kullan (başta gizli olan maske)
+                currentMaskModel = maskAttachPoint.GetChild(0).gameObject;
+                currentMaskModel.SetActive(true);
+                Debug.Log($"Mask model activated: {currentMaskModel.name}");
+            }
+            else if (maskData.maskPrefab != null)
+            {
+                // Child yoksa prefab'dan oluştur
                 currentMaskModel = Instantiate(maskData.maskPrefab, maskAttachPoint);
                 currentMaskModel.transform.localPosition = Vector3.zero;
                 currentMaskModel.transform.localRotation = Quaternion.identity;
+                Debug.Log($"Mask model spawned: {currentMaskModel.name}");
+            }
+            else
+            {
+                Debug.LogWarning("SpawnMaskModel: No child mask and maskPrefab is NULL in MaskData!");
             }
         }
         
