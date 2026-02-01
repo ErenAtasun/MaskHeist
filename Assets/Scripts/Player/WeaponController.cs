@@ -26,6 +26,11 @@ namespace MaskHeist.Player
         [Header("Effects")]
         [SerializeField] private GameObject muzzleFlashPrefab;
         [SerializeField] private GameObject hitEffectPrefab;
+        [SerializeField] private GameObject weaponModelPrefab;
+        [SerializeField] private GameObject bulletPrefab;
+        [SerializeField] private Transform weaponHolder;
+
+        private GameObject currentWeaponInstance;
 
         [SyncVar(hook = nameof(OnAmmoChanged))]
         private int currentAmmo;
@@ -136,20 +141,27 @@ namespace MaskHeist.Player
             }
 
             nextFireTime = Time.time + fireRate;
-            CmdShoot();
+            
+            // Calculate muzzle position for visuals
+            Vector3 muzzlePos = currentWeaponInstance != null ? currentWeaponInstance.transform.position : (cameraTransform.position + cameraTransform.forward * 0.5f);
+            
+            CmdShoot(muzzlePos);
         }
 
         [Command]
-        private void CmdShoot()
+        private void CmdShoot(Vector3 muzzlePos)
         {
             if (currentAmmo <= 0) return;
 
             currentAmmo--;
 
-            // Raycast from camera
-            if (playerCamera != null)
+            // Use camera transform for direction (Server Safe)
+            if (cameraTransform != null)
             {
-                Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
+                Vector3 rayOrigin = cameraTransform.position;
+                Vector3 rayDir = cameraTransform.forward;
+                
+                Ray ray = new Ray(rayOrigin, rayDir);
                 RaycastHit hit;
 
                 if (Physics.Raycast(ray, out hit, range, shootableLayer))
@@ -174,11 +186,57 @@ namespace MaskHeist.Player
 
                     // Spawn hit effect
                     RpcShowHitEffect(hit.point, hit.normal);
+                    
+                    // Spawn bullet trail using provided muzzle pos
+                    RpcSpawnBulletTrail(muzzlePos, hit.point);
+                }
+                else
+                {
+                    // Missed everything, shoot into distance
+                    Vector3 target = rayOrigin + rayDir * range;
+                    RpcSpawnBulletTrail(muzzlePos, target);
                 }
             }
 
             // Show muzzle flash for all
             RpcShowMuzzleFlash();
+        }
+
+        [ClientRpc]
+        private void RpcSpawnBulletTrail(Vector3 start, Vector3 end)
+        {
+            if (bulletPrefab != null)
+            {
+                GameObject bullet = Instantiate(bulletPrefab, start, Quaternion.identity);
+                bullet.transform.localScale = Vector3.one * 3f; // Make bullet bigger to be visible
+                bullet.transform.LookAt(end);
+                
+                // Add velocity if it has RB, or just move it
+                Rigidbody rb = bullet.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.linearVelocity = (end - start).normalized * 50f; // Fast speed
+                }
+                else
+                {
+                    // Simple move coroutine or script
+                    StartCoroutine(MoveBullet(bullet, start, end));
+                }
+                
+                Destroy(bullet, 2f);
+            }
+        }
+
+        private System.Collections.IEnumerator MoveBullet(GameObject bullet, Vector3 start, Vector3 end)
+        {
+            float duration = 0.1f;
+            float elapsed = 0f;
+            while (elapsed < duration && bullet != null)
+            {
+                elapsed += Time.deltaTime;
+                bullet.transform.position = Vector3.Lerp(start, end, elapsed / duration);
+                yield return null;
+            }
         }
 
         [ClientRpc]
@@ -251,12 +309,49 @@ namespace MaskHeist.Player
             UIEvents.TriggerScoreChanged(newVal, newVal - oldVal); // Temporary - use ammo UI later
         }
 
-        private void OnWeaponEquipped(bool oldVal, bool newVal)
+        private void OnWeaponEquipped(bool wasEquipped, bool isEquipped)
         {
-            if (newVal && isLocalPlayer)
+            hasWeapon = isEquipped;
+            UpdateWeaponVisuals();
+        }
+
+        private void UpdateWeaponVisuals()
+        {
+            // FPS View: Only show for local player if they are Hider
+            if (isLocalPlayer)
             {
-                Debug.Log("[Weapon] ========== SİLAH ALINDI! SPACE ile ateş et ==========");
+                if (hasWeapon)
+                {
+                    if (currentWeaponInstance == null && weaponModelPrefab != null)
+                    {
+                        // Use assigned holder or fallback to camera
+                        Transform parent = weaponHolder != null ? weaponHolder : cameraTransform;
+                        
+                        currentWeaponInstance = Instantiate(weaponModelPrefab, parent);
+                        
+                        // Set layer to match camera's culling mask (usually Default)
+                        SetLayerRecursively(currentWeaponInstance, gameObject.layer);
+
+                        // Reset transform to look good in FPS view
+                        // Adjusted values for better visibility
+                        currentWeaponInstance.transform.localPosition = new Vector3(0.25f, -0.25f, 0.5f); 
+                        currentWeaponInstance.transform.localRotation = Quaternion.identity; // Reset rotation first
+                        currentWeaponInstance.transform.localScale = Vector3.one; // Reset scale
+                    }
+                    if (currentWeaponInstance != null) currentWeaponInstance.SetActive(true);
+                }
+                else
+                {
+                    if (currentWeaponInstance != null) currentWeaponInstance.SetActive(false);
+                }
             }
+            // TPS View (for others): Could handle 3rd person model here if we had one
+        }
+
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+            UpdateWeaponVisuals();
         }
 
         /// <summary>
@@ -269,5 +364,15 @@ namespace MaskHeist.Player
             currentAmmo = startAmmo;
             Debug.Log($"[Weapon] Weapon equipped with {startAmmo} ammo");
         }
+        private void SetLayerRecursively(GameObject obj, int newLayer)
+        {
+            if (obj == null) return;
+            obj.layer = newLayer;
+            foreach (Transform child in obj.transform)
+            {
+                SetLayerRecursively(child.gameObject, newLayer);
+            }
+        }
+
     }
 }
