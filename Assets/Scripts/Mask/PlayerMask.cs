@@ -82,20 +82,34 @@ namespace MaskHeist.Mask
         {
             if (netIdentity == null) return;
             if (!isLocalPlayer) return;
-            if (CurrentMask == null) return;
+            
+            if (CurrentMask == null)
+            {
+                // Sadece ara sıra logla (spam önleme)
+                if (Time.frameCount % 300 == 0)
+                    Debug.Log($"[PlayerMask] CurrentMask is NULL - maske henüz alınmadı veya client'a sync olmadı");
+                return;
+            }
             
             // Only Seeker can use mask abilities
-            if (gamePlayer == null || gamePlayer.role != PlayerRole.Seeker) return;
+            if (gamePlayer == null || gamePlayer.role != PlayerRole.Seeker)
+            {
+                if (Time.frameCount % 300 == 0)
+                    Debug.Log($"[PlayerMask] Yetenek kullanılamaz - role: {gamePlayer?.role}, sadece Seeker kullanabilir");
+                return;
+            }
             
             // E = Invisibility (all masks)
             if (Input.GetKeyDown(KeyCode.E))
             {
+                Debug.Log($"[PlayerMask] E tuşuna basıldı - Invisibility denenecek (Mask: {CurrentMask.maskName})");
                 TryUseInvisibility();
             }
             
             // Q = Unique ability (Sprinter, etc.)
             if (Input.GetKeyDown(KeyCode.Q))
             {
+                Debug.Log($"[PlayerMask] Q tuşuna basıldı - Unique ability denenecek (Type: {CurrentMask.uniqueAbilityType})");
                 TryUseUniqueAbility();
             }
         }
@@ -248,10 +262,10 @@ namespace MaskHeist.Mask
                 // Sunucuda maske uygula
                 ApplyMask(maskData);
                 
-                // Tüm client'lara maske görselini göster
+                // Tüm client'lara maskeyi sync et (isim üzerinden)
                 if (isServer)
                 {
-                    RpcShowMaskVisual();
+                    RpcApplyMask(maskData.maskName);
                 }
             }
             else
@@ -260,13 +274,55 @@ namespace MaskHeist.Mask
             }
         }
         
+        /// <summary>
+        /// Client'larda maskeyi isim üzerinden bulup uygular.
+        /// Server zaten ApplyMask çağırdığı için server'da tekrar çağırmayız.
+        /// </summary>
         [ClientRpc]
-        private void RpcShowMaskVisual()
+        private void RpcApplyMask(string maskName)
         {
-            Debug.Log($"RpcShowMaskVisual called - CurrentMask: {CurrentMask?.maskName}");
-            if (CurrentMask != null)
+            Debug.Log($"[PlayerMask] RpcApplyMask called - maskName: {maskName}, isServer: {isServer}, CurrentMask: {CurrentMask?.maskName}");
+            
+            // Server zaten EquipMaskDirect içinde ApplyMask çağırdı, tekrar çağırmaya gerek yok
+            if (isServer) return;
+            
+            // Client tarafında maskeyi bul ve uygula
+            MaskData maskToApply = null;
+            
+            // 1. Önce MaskRegistry'den ara
+            if (MaskRegistry.Instance != null)
             {
-                SpawnMaskModel(CurrentMask);
+                maskToApply = MaskRegistry.Instance.GetMaskByName(maskName);
+            }
+            
+            // 2. Registry'de bulunamadıysa, sahnedeki MaskPickup'lardan ara
+            if (maskToApply == null)
+            {
+                foreach (var pickup in FindObjectsOfType<MaskPickup>())
+                {
+                    if (pickup.MaskData != null && pickup.MaskData.maskName == maskName)
+                    {
+                        maskToApply = pickup.MaskData;
+                        break;
+                    }
+                }
+            }
+            
+            // 3. Son çare: defaultMask kullan
+            if (maskToApply == null && defaultMask != null)
+            {
+                Debug.LogWarning($"[PlayerMask] Mask '{maskName}' not found, using defaultMask");
+                maskToApply = defaultMask;
+            }
+            
+            if (maskToApply != null)
+            {
+                ApplyMask(maskToApply);
+                Debug.Log($"[PlayerMask] Client mask applied: {maskToApply.maskName}");
+            }
+            else
+            {
+                Debug.LogError($"[PlayerMask] Could not find any mask to apply on client! maskName: {maskName}");
             }
         }
         
