@@ -25,5 +25,10 @@ namespace MaskHeist.Gameplay
         
         [Tooltip("Height offset when held")]
         public float holdHeight = 1f;
+        
+        [Header("Pool Settings")]
+        [Tooltip("Higher weight = more likely to be selected in loot pool (1 = normal, 0.5 = rare, 2 = common)")]
+        [Range(0.1f, 10f)]
+        public float spawnWeight = 1f;
     }
 }

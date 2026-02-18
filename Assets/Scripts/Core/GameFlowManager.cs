@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using MaskHeist.Gameplay;
+using MaskHeist.Loot;
 using MaskHeist.Player;
 using MaskHeist.Spawn;
 using MaskHeist.UI;
@@ -41,6 +42,9 @@ namespace MaskHeist.Core
 
         // Reference to spawned item
         private HideableItem spawnedItem;
+        
+        // Track spawned bonus loots for cleanup
+        private List<GameObject> spawnedBonusLoots = new List<GameObject>();
 
         private bool itemFound = false;
 
@@ -127,6 +131,10 @@ namespace MaskHeist.Core
             currentPhase = GamePhase.Seeking;
             phaseEndTime = NetworkTime.time + seekingPhaseDuration;
             Debug.Log("Faz: Seeking - Oyun Başladı!");
+            
+            // Spawn bonus loots on the map
+            SpawnBonusLoots();
+            
             RpcUpdatePhase(currentPhase);
             
             // Wait for time to run out OR item to be found
@@ -197,6 +205,9 @@ namespace MaskHeist.Core
                 NetworkServer.Destroy(spawnedItem.gameObject);
                 spawnedItem = null;
             }
+            
+            // Clean up bonus loots
+            CleanupBonusLoots();
 
             // Clean up traps (Optional - requires tracking traps)
             // ...
@@ -233,9 +244,23 @@ namespace MaskHeist.Core
         [Server]
         void SpawnHideableItem()
         {
-            if (hideableItemPrefab == null)
+            // Try to get a random prefab from LootPool
+            GameObject prefabToSpawn = null;
+            
+            if (LootPool.Instance != null)
             {
-                Debug.LogWarning("[GameFlowManager] Hideable item prefab not assigned!");
+                prefabToSpawn = LootPool.Instance.GetRandomHideableItemPrefab();
+            }
+            
+            // Fallback to hardcoded prefab
+            if (prefabToSpawn == null)
+            {
+                prefabToSpawn = hideableItemPrefab;
+            }
+            
+            if (prefabToSpawn == null)
+            {
+                Debug.LogWarning("[GameFlowManager] No hideable item prefab available!");
                 return;
             }
 
@@ -255,12 +280,12 @@ namespace MaskHeist.Core
                              + Vector3.up * 1f;
 
             // Spawn the item
-            GameObject itemObj = Instantiate(hideableItemPrefab, spawnPos, Quaternion.identity);
+            GameObject itemObj = Instantiate(prefabToSpawn, spawnPos, Quaternion.identity);
             NetworkServer.Spawn(itemObj);
 
             spawnedItem = itemObj.GetComponent<HideableItem>();
 
-            Debug.Log($"[GameFlowManager] Hideable item spawned for {hider.displayName} at {spawnPos}");
+            Debug.Log($"[GameFlowManager] Hideable item spawned: {spawnedItem?.ItemName ?? prefabToSpawn.name} for {hider.displayName}");
 
             // Notify the Hider
             var placementController = hider.GetComponent<ItemPlacementController>();
@@ -268,6 +293,56 @@ namespace MaskHeist.Core
             {
                 placementController.TargetNotifyItemSpawned(hider.connectionToClient, itemObj);
             }
+        }
+
+        /// <summary>
+        /// Spawn bonus loot items on the map during Seeking phase.
+        /// </summary>
+        [Server]
+        void SpawnBonusLoots()
+        {
+            if (LootPool.Instance == null)
+            {
+                Debug.Log("[GameFlowManager] No LootPool — bonus loot spawn skipped");
+                return;
+            }
+
+            var spawns = LootPool.Instance.GetBonusLootSpawns();
+            
+            foreach (var spawnInfo in spawns)
+            {
+                GameObject lootObj = Instantiate(spawnInfo.prefab, spawnInfo.position, spawnInfo.rotation);
+                NetworkServer.Spawn(lootObj);
+                
+                // Set loot data if it has a LootItem component
+                var lootItem = lootObj.GetComponent<LootItem>();
+                if (lootItem != null && spawnInfo.lootData != null)
+                {
+                    lootItem.SetLootData(spawnInfo.lootData);
+                }
+                
+                spawnedBonusLoots.Add(lootObj);
+                Debug.Log($"[GameFlowManager] Bonus loot spawned: {spawnInfo.lootData?.lootName} at {spawnInfo.position}");
+            }
+            
+            Debug.Log($"[GameFlowManager] Total bonus loots spawned: {spawnedBonusLoots.Count}");
+        }
+
+        /// <summary>
+        /// Clean up all bonus loots between rounds.
+        /// </summary>
+        [Server]
+        void CleanupBonusLoots()
+        {
+            foreach (var lootObj in spawnedBonusLoots)
+            {
+                if (lootObj != null)
+                {
+                    NetworkServer.Destroy(lootObj);
+                }
+            }
+            spawnedBonusLoots.Clear();
+            Debug.Log("[GameFlowManager] Bonus loots cleaned up");
         }
 
         [Server]
