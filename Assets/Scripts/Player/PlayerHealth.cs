@@ -43,7 +43,7 @@ namespace MaskHeist.Player
         /// Called by WeaponController when player is shot.
         /// </summary>
         [Server]
-        public void ServerDie()
+        public void ServerDie(NetworkIdentity killer = null)
         {
             if (isDead) return;
 
@@ -52,6 +52,13 @@ namespace MaskHeist.Player
 
             isDead = true;
             Debug.Log($"[PlayerHealth] {gamePlayer?.displayName ?? "Player"} öldü!");
+
+            // Award kill points to killer
+            if (killer != null && ScoreManager.Instance != null)
+            {
+                ScoreManager.Instance.OnSeekerKilled(killer);
+                Debug.Log($"[PlayerHealth] Kill puanı verildi: {killer.gameObject.name}");
+            }
 
             // Notify all clients
             RpcOnDeath();

@@ -1,16 +1,19 @@
 using UnityEngine;
 using TMPro;
+using Mirror;
 
 namespace MaskHeist.UI
 {
     /// <summary>
-    /// Displays current score with punch animation on change.
+    /// Displays current player's personal score with punch animation on change.
+    /// Shows role and personal score (not team score).
     /// </summary>
     public class ScoreUI : MonoBehaviour
     {
         [Header("References")]
         [SerializeField] private TextMeshProUGUI scoreText;
         [SerializeField] private TextMeshProUGUI scoreDeltaText;
+        [SerializeField] private TextMeshProUGUI reasonText;
 
         [Header("Format")]
         [SerializeField] private string scoreFormat = "Score: {0}";
@@ -19,7 +22,7 @@ namespace MaskHeist.UI
         [Header("Animation")]
         [SerializeField] private float punchScale = 1.3f;
         [SerializeField] private float punchDuration = 0.2f;
-        [SerializeField] private float deltaFadeDuration = 1f;
+        [SerializeField] private float deltaFadeDuration = 1.5f;
 
         private int currentScore;
         private RectTransform scoreTransform;
@@ -38,11 +41,14 @@ namespace MaskHeist.UI
             
             if (scoreDeltaText != null)
                 scoreDeltaText.alpha = 0f;
+            if (reasonText != null)
+                reasonText.alpha = 0f;
         }
 
         private void OnEnable()
         {
             UIEvents.OnScoreChanged += HandleScoreChanged;
+            UIEvents.OnPlayerScoreChanged += HandlePlayerScoreChanged;
             UIEvents.OnLootCollected += HandleLootCollected;
             UIEvents.OnRoleChanged += HandleRoleChanged;
         }
@@ -50,6 +56,7 @@ namespace MaskHeist.UI
         private void OnDisable()
         {
             UIEvents.OnScoreChanged -= HandleScoreChanged;
+            UIEvents.OnPlayerScoreChanged -= HandlePlayerScoreChanged;
             UIEvents.OnLootCollected -= HandleLootCollected;
             UIEvents.OnRoleChanged -= HandleRoleChanged;
         }
@@ -68,15 +75,43 @@ namespace MaskHeist.UI
             }
 
             // Delta fade out
-            if (deltaFadeTimer > 0 && scoreDeltaText != null)
+            if (deltaFadeTimer > 0)
             {
                 deltaFadeTimer -= Time.deltaTime;
-                scoreDeltaText.alpha = deltaFadeTimer / deltaFadeDuration;
+                float alpha = Mathf.Clamp01(deltaFadeTimer / deltaFadeDuration);
+                
+                if (scoreDeltaText != null)
+                    scoreDeltaText.alpha = alpha;
+                if (reasonText != null)
+                    reasonText.alpha = alpha;
+            }
+        }
+
+        /// <summary>
+        /// Handles per-player score event — only updates if it's the local player.
+        /// </summary>
+        private void HandlePlayerScoreChanged(uint netId, int newScore, int delta)
+        {
+            // Only show our own score
+            if (NetworkClient.localPlayer == null) return;
+            if (NetworkClient.localPlayer.netId != netId) return;
+            
+            currentScore = newScore;
+            UpdateDisplay(newScore);
+
+            if (delta > 0)
+            {
+                ShowDelta(delta);
+                PlayPunchAnimation();
             }
         }
 
         private void HandleScoreChanged(int newScore, int delta)
         {
+            // This is now a fallback — per-player event is preferred
+            // Only update if we haven't received a per-player event
+            if (NetworkClient.localPlayer != null) return;
+            
             currentScore = newScore;
             UpdateDisplay(newScore);
 
@@ -98,6 +133,7 @@ namespace MaskHeist.UI
         private void HandleRoleChanged(string roleName)
         {
             currentRole = roleName;
+            currentScore = 0; // Reset score display on role change
             UpdateDisplay(currentScore);
         }
 
@@ -111,7 +147,6 @@ namespace MaskHeist.UI
                 }
                 else
                 {
-                    // Format: "Hider | Score: 100"
                     scoreText.text = $"{currentRole} | {string.Format(scoreFormat, score)}";
                 }
             }

@@ -48,6 +48,19 @@ namespace MaskHeist.UI
             OnScoreChanged?.Invoke(newScore, delta);
         }
 
+        // ==================== PER-PLAYER SCORE ====================
+        
+        /// <summary>
+        /// Fired when a specific player's score changes.
+        /// Parameters: player netId, new score, score delta
+        /// </summary>
+        public static event Action<uint, int, int> OnPlayerScoreChanged;
+        
+        public static void TriggerPlayerScoreChanged(uint netId, int newScore, int delta)
+        {
+            OnPlayerScoreChanged?.Invoke(netId, newScore, delta);
+        }
+
         // ==================== TIMER ====================
         
         /// <summary>

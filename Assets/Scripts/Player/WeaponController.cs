@@ -179,7 +179,7 @@ namespace MaskHeist.Player
                         MaskHeistGamePlayer targetPlayer = health.GetComponent<MaskHeistGamePlayer>();
                         if (targetPlayer != null && targetPlayer.role == PlayerRole.Seeker)
                         {
-                            health.ServerDie();
+                            health.ServerDie(netIdentity);
                             Debug.Log($"[Weapon] Killed Seeker: {targetPlayer.displayName}");
                         }
                     }

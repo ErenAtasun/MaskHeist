@@ -130,8 +130,24 @@ namespace MaskHeist.Core
             RpcUpdatePhase(currentPhase);
             
             // Wait for time to run out OR item to be found
+            // Also award Hider survival points every N seconds
+            float survivalTimer = 0f;
+            float survivalInterval = ScoreManager.Instance != null ? ScoreManager.Instance.survivalInterval : 5f;
+            
             while (NetworkTime.time < phaseEndTime && !itemFound)
             {
+                survivalTimer += Time.deltaTime;
+                
+                // Award survival points periodically
+                if (survivalTimer >= survivalInterval)
+                {
+                    survivalTimer = 0f;
+                    if (ScoreManager.Instance != null)
+                    {
+                        ScoreManager.Instance.AwardSurvivalPoints();
+                    }
+                }
+                
                 yield return null;
             }
 
@@ -156,6 +172,13 @@ namespace MaskHeist.Core
         {
             currentPhase = GamePhase.RoundEnd;
             RpcUpdatePhase(currentPhase);
+            
+            // Award round-end bonuses to winning team
+            if (ScoreManager.Instance != null)
+            {
+                ScoreManager.Instance.AwardRoundEndBonus(winnerRole);
+            }
+            
             RpcGameOver(winnerRole);
 
             // Wait and restart round (Soft Reset)
@@ -195,10 +218,14 @@ namespace MaskHeist.Core
                 if (winnerRole == PlayerRole.Seeker && localPlayer.role == PlayerRole.Seeker)
                     amIWinner = true;
 
-                // ScoreManager'dan o anki skoru alabiliriz (örnek: Hider skoru veya toplam skor)
-                // Şimdilik 0 gönderiyoruz, ScoreManager'dan çekilebilir.
-                int displayScore = 0; 
+                // ScoreManager'dan oyuncunun gerçek skorunu al
+                int displayScore = 0;
+                if (ScoreManager.Instance != null && NetworkClient.localPlayer != null)
+                {
+                    displayScore = ScoreManager.Instance.GetPlayerScore(NetworkClient.localPlayer.netId);
+                }
                 
+                Debug.Log($"[GameOver] Role: {localPlayer.role}, Winner: {winnerRole}, Score: {displayScore}, Won: {amIWinner}");
                 UIEvents.TriggerGameOver(displayScore, amIWinner);
             }
         }
