@@ -8,6 +8,10 @@ namespace MaskHeist.Mask
     /// Handles the visual effects of invisibility.
     /// Supports both URP and Built-in Render Pipeline.
     /// This is NOT a NetworkBehaviour - all network logic is in PlayerMask.
+    /// 
+    /// Instead of cloning entire materials, we store only the specific properties
+    /// we modify (color, surface type, blend modes, keywords, render queue) and
+    /// explicitly restore them. This avoids issues with URP shader keyword copying.
     /// </summary>
     public class InvisibilityEffect : MonoBehaviour
     {
@@ -16,9 +20,16 @@ namespace MaskHeist.Mask
         [SerializeField] private Color screenTintColor = new Color(0.3f, 0.6f, 1f, 0.15f);
         
         private List<Renderer> playerRenderers = new List<Renderer>();
-        private Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
         private bool isInvisible = false;
         private bool isLocalPlayer = false;
+        
+        // Stores original colors per renderer (by material index)
+        // Simple and reliable — we only need to save/restore colors
+        private Dictionary<Renderer, Color[]> originalColors = new Dictionary<Renderer, Color[]>();
+        
+        // Stores original enabled state per renderer
+        // Prevents initially-disabled renderers (e.g. Capsule) from being forcefully enabled
+        private Dictionary<Renderer, bool> originalEnabledStates = new Dictionary<Renderer, bool>();
         
         // Screen overlay for local player feedback
         private Texture2D overlayTexture;
@@ -34,26 +45,20 @@ namespace MaskHeist.Mask
             
             // Cache all renderers (skip particle systems)
             playerRenderers.Clear();
+            originalEnabledStates.Clear();
             foreach (var r in GetComponentsInChildren<Renderer>())
             {
                 if (r is ParticleSystemRenderer) continue;
                 playerRenderers.Add(r);
+                originalEnabledStates[r] = r.enabled; // Save original enabled state
             }
             
-            // Store original materials (deep copy)
-            originalMaterials.Clear();
+            // Capture original colors for ALL renderers
+            originalColors.Clear();
             foreach (var renderer in playerRenderers)
             {
-                if (renderer != null)
-                {
-                    // Clone materials so we can restore them later
-                    Material[] clonedMats = new Material[renderer.materials.Length];
-                    for (int i = 0; i < renderer.materials.Length; i++)
-                    {
-                        clonedMats[i] = new Material(renderer.materials[i]);
-                    }
-                    originalMaterials[renderer] = clonedMats;
-                }
+                if (renderer == null) continue;
+                SaveOriginalColors(renderer);
             }
             
             // Create overlay texture for local player
@@ -64,7 +69,66 @@ namespace MaskHeist.Mask
                 overlayTexture.Apply();
             }
             
-            Debug.Log($"InvisibilityEffect.Initialize: Found {playerRenderers.Count} renderers (isLocalPlayer={isLocalPlayer})");
+            Debug.Log($"InvisibilityEffect.Initialize: Found {playerRenderers.Count} renderers, saved {originalColors.Count} color sets (isLocalPlayer={isLocalPlayer})");
+        }
+        
+        /// <summary>
+        /// Save original colors from shared materials before any modifications.
+        /// </summary>
+        private void SaveOriginalColors(Renderer renderer)
+        {
+            if (originalColors.ContainsKey(renderer)) return;
+            
+            // Use .materials (not sharedMaterials) to get per-instance copies
+            var mats = renderer.materials;
+            Color[] colors = new Color[mats.Length];
+            
+            for (int i = 0; i < mats.Length; i++)
+            {
+                var mat = mats[i];
+                if (mat == null) { colors[i] = Color.white; continue; }
+                
+                Color c;
+                if (mat.HasProperty("_BaseColor"))
+                    c = mat.GetColor("_BaseColor");
+                else if (mat.HasProperty("_Color"))
+                    c = mat.color;
+                else
+                    c = Color.white;
+                
+                // Detect if color is contaminated by hologram tint (0.3, 0.8, 1.0, 0.4)
+                // If RGB matches hologram, the shared material was dirty - use white instead
+                if (Mathf.Approximately(c.r, 0.3f) && Mathf.Approximately(c.g, 0.8f) && Mathf.Approximately(c.b, 1f))
+                {
+                    Debug.LogWarning($"[InvisibilityEffect] Detected contaminated hologram color on {renderer.gameObject.name}, using white");
+                    c = Color.white;
+                }
+                
+                colors[i] = c;
+            }
+            
+            // Assign instanced materials back (ensures renderer uses instances, not shared)
+            renderer.materials = mats;
+            
+            originalColors[renderer] = colors;
+        }
+        
+        /// <summary>
+        /// Refresh the renderer cache to pick up any newly spawned renderers
+        /// (e.g. mask model that is spawned after Initialize).
+        /// </summary>
+        private void RefreshRenderers()
+        {
+            foreach (var r in GetComponentsInChildren<Renderer>())
+            {
+                if (r is ParticleSystemRenderer) continue;
+                if (playerRenderers.Contains(r)) continue; // Already cached
+                
+                playerRenderers.Add(r);
+                originalEnabledStates[r] = r.enabled; // Save original enabled state
+                SaveOriginalColors(r);
+                Debug.Log($"[InvisibilityEffect] New renderer discovered: {r.gameObject.name} (enabled={r.enabled})");
+            }
         }
         
         /// <summary>
@@ -72,13 +136,11 @@ namespace MaskHeist.Mask
         /// </summary>
         public void SetInvisible(bool invisible)
         {
+            if (isInvisible == invisible) return; // Prevent duplicate calls
             isInvisible = invisible;
             
-            if (playerRenderers.Count == 0)
-            {
-                Debug.LogWarning("[InvisibilityEffect] No renderers found! Re-initializing...");
-                Initialize(isLocalPlayer);
-            }
+            // Refresh renderer list every time (mask model may have been spawned after init)
+            RefreshRenderers();
             
             int processedCount = 0;
             
@@ -91,28 +153,25 @@ namespace MaskHeist.Mask
                 {
                     if (isLocalPlayer)
                     {
-                        // Local player: make semi-transparent
                         MakeRendererTransparent(renderer, invisibleAlpha);
                     }
                     else
                     {
-                        // Other players: completely invisible
                         renderer.enabled = false;
                     }
-                    
-                    // Disable shadows for all
                     renderer.shadowCastingMode = ShadowCastingMode.Off;
                 }
                 else
                 {
-                    // Restore visibility
-                    renderer.enabled = true;
+                    // Restore original enabled state (don't blindly enable all renderers)
+                    bool wasEnabled = true;
+                    originalEnabledStates.TryGetValue(renderer, out wasEnabled);
+                    renderer.enabled = wasEnabled;
                     renderer.shadowCastingMode = ShadowCastingMode.On;
-                    RestoreRendererMaterials(renderer);
+                    ForceOpaqueAll(renderer);
                 }
             }
             
-            // Screen overlay for local player
             if (isLocalPlayer)
             {
                 showOverlay = invisible;
@@ -127,44 +186,40 @@ namespace MaskHeist.Mask
         /// </summary>
         private void MakeRendererTransparent(Renderer renderer, float alpha)
         {
+            // Ensure colors are saved
+            SaveOriginalColors(renderer);
+            
             foreach (var mat in renderer.materials)
             {
-                // === URP Lit/Simple Lit Shader ===
                 if (mat.HasProperty("_BaseColor"))
                 {
+                    // === URP ===
                     Color c = mat.GetColor("_BaseColor");
                     c.a = alpha;
                     mat.SetColor("_BaseColor", c);
                     
-                    // URP: Set surface type to Transparent
                     if (mat.HasProperty("_Surface"))
-                    {
-                        mat.SetFloat("_Surface", 1); // 0=Opaque, 1=Transparent
-                    }
+                        mat.SetFloat("_Surface", 1); // Transparent
                     
-                    // URP blend mode
-                    mat.SetFloat("_Blend", 0); // 0=Alpha, 1=Premultiply, 2=Additive, 3=Multiply
+                    mat.SetFloat("_Blend", 0);
                     mat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
                     mat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
                     mat.SetInt("_ZWrite", 0);
                     
-                    // URP keywords
                     mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
                     mat.DisableKeyword("_ALPHATEST_ON");
                     mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
                     
                     mat.renderQueue = (int)RenderQueue.Transparent;
-                    
-                    Debug.Log($"[InvisibilityEffect] URP shader: {mat.name} alpha -> {alpha}");
                 }
-                // === Built-in RP Standard Shader (fallback) ===
                 else if (mat.HasProperty("_Color"))
                 {
+                    // === Built-in RP ===
                     Color c = mat.color;
                     c.a = alpha;
                     mat.color = c;
                     
-                    mat.SetFloat("_Mode", 3); // Transparent mode
+                    mat.SetFloat("_Mode", 3);
                     mat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
                     mat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
                     mat.SetInt("_ZWrite", 0);
@@ -172,28 +227,79 @@ namespace MaskHeist.Mask
                     mat.EnableKeyword("_ALPHABLEND_ON");
                     mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
                     mat.renderQueue = (int)RenderQueue.Transparent;
-                    
-                    Debug.Log($"[InvisibilityEffect] Built-in shader: {mat.name} alpha -> {alpha}");
-                }
-                else
-                {
-                    // Unknown shader - just try to disable renderer as last resort
-                    Debug.LogWarning($"[InvisibilityEffect] Unknown shader on {mat.name} ({mat.shader.name}) - no _BaseColor or _Color property");
                 }
             }
         }
         
-        private void RestoreRendererMaterials(Renderer renderer)
+
+
+        
+        /// <summary>
+        /// Force ALL materials on a renderer back to opaque with original colors.
+        /// </summary>
+        private void ForceOpaqueAll(Renderer renderer)
         {
-            if (originalMaterials.TryGetValue(renderer, out Material[] originalMats))
+            Color[] savedColors = null;
+            originalColors.TryGetValue(renderer, out savedColors);
+            
+            var mats = renderer.materials;
+            for (int i = 0; i < mats.Length; i++)
             {
-                // Restore from our cloned originals
-                Material[] restoredMats = new Material[originalMats.Length];
-                for (int i = 0; i < originalMats.Length; i++)
+                ForceOpaque(mats[i]);
+                
+                // Restore original color (not just alpha)
+                if (savedColors != null && i < savedColors.Length)
                 {
-                    restoredMats[i] = new Material(originalMats[i]);
+                    if (mats[i].HasProperty("_BaseColor"))
+                        mats[i].SetColor("_BaseColor", savedColors[i]);
+                    else if (mats[i].HasProperty("_Color"))
+                        mats[i].color = savedColors[i];
                 }
-                renderer.materials = restoredMats;
+            }
+            renderer.materials = mats; // Assign back
+        }
+        
+        /// <summary>
+        /// Force a single material back to fully opaque mode.
+        /// </summary>
+        private void ForceOpaque(Material mat)
+        {
+            if (mat.HasProperty("_BaseColor"))
+            {
+                Color c = mat.GetColor("_BaseColor");
+                c.a = 1f;
+                mat.SetColor("_BaseColor", c);
+                
+                if (mat.HasProperty("_Surface"))
+                    mat.SetFloat("_Surface", 0); // Opaque
+                
+                mat.SetInt("_SrcBlend", (int)BlendMode.One);
+                mat.SetInt("_DstBlend", (int)BlendMode.Zero);
+                mat.SetInt("_ZWrite", 1);
+                
+                mat.DisableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                
+                mat.renderQueue = (int)RenderQueue.Geometry;
+            }
+            else if (mat.HasProperty("_Color"))
+            {
+                Color c = mat.color;
+                c.a = 1f;
+                mat.color = c;
+                
+                if (mat.HasProperty("_Mode"))
+                    mat.SetFloat("_Mode", 0); // Opaque
+                
+                mat.SetInt("_SrcBlend", (int)BlendMode.One);
+                mat.SetInt("_DstBlend", (int)BlendMode.Zero);
+                mat.SetInt("_ZWrite", 1);
+                
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.DisableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                
+                mat.renderQueue = (int)RenderQueue.Geometry;
             }
         }
         
@@ -207,13 +313,11 @@ namespace MaskHeist.Mask
         
         /// <summary>
         /// Screen overlay for local player - shows a subtle tint to indicate invisibility.
-        /// OnGUI is the simplest way to draw a full-screen overlay without extra UI setup.
         /// </summary>
         private void OnGUI()
         {
             if (!showOverlay || !isLocalPlayer || overlayTexture == null) return;
             
-            // Pulsing alpha effect
             float pulse = 0.5f + 0.5f * Mathf.Sin(overlayFadeTimer * Mathf.PI / overlayPulseDuration);
             Color tint = screenTintColor;
             tint.a = screenTintColor.a * pulse;
@@ -225,18 +329,8 @@ namespace MaskHeist.Mask
         
         private void OnDestroy()
         {
-            // Cleanup cloned materials
-            foreach (var kvp in originalMaterials)
-            {
-                if (kvp.Value != null)
-                {
-                    foreach (var mat in kvp.Value)
-                    {
-                        if (mat != null) Destroy(mat);
-                    }
-                }
-            }
-            originalMaterials.Clear();
+            originalColors.Clear();
+            originalEnabledStates.Clear();
             playerRenderers.Clear();
             
             if (overlayTexture != null)

@@ -8,6 +8,7 @@ using MaskHeist.Loot;
 using MaskHeist.Player;
 using MaskHeist.Spawn;
 using MaskHeist.UI;
+using MaskHeist.Mask;
 
 namespace MaskHeist.Core
 {
@@ -125,7 +126,14 @@ namespace MaskHeist.Core
             phaseEndTime = NetworkTime.time + briefingPhaseDuration;
             Debug.Log("Faz: Briefing - Arayanlar hazırlanıyor...");
             RpcUpdatePhase(currentPhase);
+            
+            // Show mask selection UI for Seekers
+            RpcShowMaskSelection();
+            
             yield return new WaitForSeconds(briefingPhaseDuration);
+            
+            // Hide mask selection UI (auto-select default if not chosen)
+            RpcHideMaskSelection();
 
             // 4. Seeking Fazı
             currentPhase = GamePhase.Seeking;
@@ -386,6 +394,35 @@ namespace MaskHeist.Core
         {
             // Client'larda UI güncelleme, ses çalma vb.
             Debug.Log($"Client Faz Güncellemesi: {newPhase}");
+        }
+        
+        /// <summary>
+        /// Show mask selection panel on Seeker clients during Briefing.
+        /// </summary>
+        [ClientRpc]
+        private void RpcShowMaskSelection()
+        {
+            // Only Seekers can select masks
+            var localPlayer = NetworkClient.localPlayer?.GetComponent<MaskHeistGamePlayer>();
+            if (localPlayer != null && localPlayer.role == PlayerRole.Seeker)
+            {
+                if (UIManager.Instance != null)
+                {
+                    UIManager.Instance.ShowMaskSelection();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Hide mask selection panel on all clients.
+        /// </summary>
+        [ClientRpc]
+        private void RpcHideMaskSelection()
+        {
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.HideMaskSelection();
+            }
         }
 
         [Server]

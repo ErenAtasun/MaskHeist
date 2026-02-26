@@ -335,7 +335,7 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
-  walkSpeed: 5
+  walkSpeed: 10
   sprintMultiplier: 1.5
   crouchMultiplier: 0.5
   gravity: -20
@@ -433,6 +433,7 @@ MonoBehaviour:
   syncInterval: 0
   defaultMask: {fileID: 11400000, guid: fc6f76c749c4bff4c9559b07fa1cd9ca, type: 2}
   maskAttachPoint: {fileID: 8733411981515604175}
+  decoyClonePrefab: {fileID: 9011153442757199606, guid: be4c417a6af2b134fba3dfc5aa483f05, type: 3}
 --- !u!114 &8667478913467878782
 MonoBehaviour:
   m_ObjectHideFlags: 0

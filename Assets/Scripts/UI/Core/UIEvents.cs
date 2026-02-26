@@ -134,5 +134,40 @@ namespace MaskHeist.UI
         {
             OnWeaponEquipped?.Invoke(hasWeapon);
         }
+
+        // ==================== MASK ====================
+        
+        /// <summary>
+        /// Fired when decoy ability is activated or deactivated.
+        /// Parameter: true = active, false = ended
+        /// </summary>
+        public static event Action<bool> OnDecoyActivated;
+        
+        public static void TriggerDecoyActivated(bool isActive)
+        {
+            OnDecoyActivated?.Invoke(isActive);
+        }
+
+        /// <summary>
+        /// Fired when player selects a mask from the selection panel.
+        /// Parameter: mask index in MaskRegistry
+        /// </summary>
+        public static event Action<int> OnMaskSelected;
+        
+        public static void TriggerMaskSelected(int maskIndex)
+        {
+            OnMaskSelected?.Invoke(maskIndex);
+        }
+
+        /// <summary>
+        /// Fired to show or hide the mask selection panel.
+        /// Parameter: true = show, false = hide
+        /// </summary>
+        public static event Action<bool> OnShowMaskSelection;
+        
+        public static void TriggerShowMaskSelection(bool show)
+        {
+            OnShowMaskSelection?.Invoke(show);
+        }
     }
 }

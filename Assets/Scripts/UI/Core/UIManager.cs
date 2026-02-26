@@ -19,6 +19,7 @@ namespace MaskHeist.UI
         [Header("Panel References")]
         [SerializeField] private PauseMenuPanel pauseMenu;
         [SerializeField] private GameOverPanel gameOverPanel;
+        [SerializeField] private MaskSelectionPanel maskSelectionPanel;
 
         // Public accessors
         public InteractionPromptUI InteractionPrompt => interactionPrompt;
@@ -27,6 +28,7 @@ namespace MaskHeist.UI
         public TimerUI Timer => timerUI;
         public PauseMenuPanel PauseMenu => pauseMenu;
         public GameOverPanel GameOver => gameOverPanel;
+        public MaskSelectionPanel MaskSelection => maskSelectionPanel;
 
         private void Awake()
         {
@@ -75,6 +77,8 @@ namespace MaskHeist.UI
                 pauseMenu = GetComponentInChildren<PauseMenuPanel>(true);
             if (gameOverPanel == null)
                 gameOverPanel = GetComponentInChildren<GameOverPanel>(true);
+            if (maskSelectionPanel == null)
+                maskSelectionPanel = GetComponentInChildren<MaskSelectionPanel>(true);
         }
 
         // ==================== PUBLIC METHODS ====================
@@ -135,12 +139,33 @@ namespace MaskHeist.UI
         }
 
         /// <summary>
+        /// Show mask selection panel.
+        /// </summary>
+        public void ShowMaskSelection()
+        {
+            UIEvents.TriggerShowMaskSelection(true);
+        }
+
+        /// <summary>
+        /// Hide mask selection panel and auto-select if needed.
+        /// </summary>
+        public void HideMaskSelection()
+        {
+            if (maskSelectionPanel != null)
+            {
+                maskSelectionPanel.AutoSelectDefault();
+            }
+            UIEvents.TriggerShowMaskSelection(false);
+        }
+
+        /// <summary>
         /// Hide all panels (for game start/restart).
         /// </summary>
         public void HideAllPanels()
         {
             if (pauseMenu != null) pauseMenu.Hide();
             if (gameOverPanel != null) gameOverPanel.Hide();
+            if (maskSelectionPanel != null) maskSelectionPanel.Hide();
         }
     }
 }

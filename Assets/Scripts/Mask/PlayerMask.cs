@@ -1,6 +1,8 @@
 using UnityEngine;
 using Mirror;
 using MaskHeist.Core;
+using MaskHeist.Mask.Abilities;
+using MaskHeist.UI;
 
 namespace MaskHeist.Mask
 {
@@ -26,19 +28,35 @@ namespace MaskHeist.Mask
         [SyncVar(hook = nameof(OnSprintChanged))]
         private bool isSprinting = false;
         
-        // Invisibility state
+        // Invisibility state (Energy Bar system)
         private InvisibilityEffect invisibilityEffect;
-        private float invisibilityDuration = 10f;
-        private float invisibilityCooldown = 45f;
-        private float invisibilityCooldownEndTime = 0f;
+        private float invisibilityMaxEnergy = 5f;  // Total seconds of invisibility
+        [SyncVar] private float invisibilityEnergy = 5f;  // Current energy remaining
+        private float invisibilityDrainRate = 1f;   // Energy drain per second (1 = real-time)
+        private float invisibilityRechargeRate = 0.5f; // Energy recharge per second
+        private float minEnergyToActivate = 0.5f;  // Minimum energy needed to toggle on
         
         // Sprint state
         private float sprintDuration = 5f;
         private float sprintCooldown = 30f;
-        private float sprintCooldownEndTime = 0f;
+        [SyncVar] private float sprintCooldownEndTime = 0f;
         private float sprintSpeedMultiplier = 1.5f;
+        private float sprintDeactivateTime = -1f; // Server-side timer (replaces Invoke)
         private PlayerController playerController;
         private MaskHeistGamePlayer gamePlayer;
+        
+        // Decoy state
+        [SyncVar(hook = nameof(OnDecoyChanged))]
+        private bool isDecoyActive = false;
+        private float decoyCooldown = 60f;
+        [SyncVar] private float decoyCooldownEndTime = 0f;
+        private float decoyLifetime = 4f;
+        private float decoySpeed = 7f;
+        private float decoyDeactivateTime = -1f; // Server-side timer (replaces Invoke)
+        
+        [Header("Decoy Settings")]
+        [SerializeField] private GameObject decoyClonePrefab;
+        private GameObject activeDecoyObj; // Track active decoy to manage/destroy it
         
         private GameObject currentMaskModel;
         private MaskPickup currentMaskPickup;
@@ -50,11 +68,18 @@ namespace MaskHeist.Mask
         public bool HasMask => CurrentMask != null;
         public MaskPickup CurrentMaskPickup => currentMaskPickup;
         
-        public bool IsInvisibilityOnCooldown => NetworkTime.time < invisibilityCooldownEndTime;
-        public float InvisibilityCooldownRemaining => Mathf.Max(0, invisibilityCooldownEndTime - (float)NetworkTime.time);
+        public bool IsInvisibilityOnCooldown => invisibilityEnergy < minEnergyToActivate;
+        public float InvisibilityCooldownRemaining => 0; // No cooldown, energy-based now
+        public float InvisibilityEnergy => invisibilityEnergy;
+        public float InvisibilityMaxEnergy => invisibilityMaxEnergy;
+        public float InvisibilityEnergyPercent => invisibilityMaxEnergy > 0 ? invisibilityEnergy / invisibilityMaxEnergy : 0;
         
         public bool IsSprintOnCooldown => NetworkTime.time < sprintCooldownEndTime;
         public float SprintCooldownRemaining => Mathf.Max(0, sprintCooldownEndTime - (float)NetworkTime.time);
+        
+        public bool IsDecoyOnCooldown => NetworkTime.time < decoyCooldownEndTime;
+        public float DecoyCooldownRemaining => Mathf.Max(0, decoyCooldownEndTime - (float)NetworkTime.time);
+        public bool IsDecoyActive => isDecoyActive;
         
         private void Awake()
         {
@@ -83,9 +108,28 @@ namespace MaskHeist.Mask
             if (netIdentity == null) return;
             if (!isLocalPlayer) return;
             
+            // Client-side safety: if server says we're invisible but energy is 0, force deactivate
+            if (isInvisible && invisibilityEnergy <= 0f)
+            {
+                Debug.LogWarning("[PlayerMask] Client safety: Enerji 0 ama hala görünmez! Zorla kapatılıyor...");
+                CmdDeactivateInvisibility();
+            }
+            
+            // Log Q/E presses BEFORE any guard checks
+            if (Input.GetKeyDown(KeyCode.Q))
+            {
+                Debug.Log($"[PlayerMask] Q BASILDI! CurrentMask: {CurrentMask?.maskName ?? "NULL"}, " +
+                          $"Role: {gamePlayer?.role.ToString() ?? "NULL"}, " +
+                          $"AbilityType: {CurrentMask?.uniqueAbilityType.ToString() ?? "N/A"}");
+            }
+            if (Input.GetKeyDown(KeyCode.E))
+            {
+                Debug.Log($"[PlayerMask] E BASILDI! CurrentMask: {CurrentMask?.maskName ?? "NULL"}, " +
+                          $"Role: {gamePlayer?.role.ToString() ?? "NULL"}, Energy: {invisibilityEnergy:F1}/{invisibilityMaxEnergy}");
+            }
+            
             if (CurrentMask == null)
             {
-                // Sadece ara sıra logla (spam önleme)
                 if (Time.frameCount % 300 == 0)
                     Debug.Log($"[PlayerMask] CurrentMask is NULL - maske henüz alınmadı veya client'a sync olmadı");
                 return;
@@ -94,19 +138,18 @@ namespace MaskHeist.Mask
             // Only Seeker can use mask abilities
             if (gamePlayer == null || gamePlayer.role != PlayerRole.Seeker)
             {
-                if (Time.frameCount % 300 == 0)
-                    Debug.Log($"[PlayerMask] Yetenek kullanılamaz - role: {gamePlayer?.role}, sadece Seeker kullanabilir");
+                if (Input.GetKeyDown(KeyCode.Q) || Input.GetKeyDown(KeyCode.E))
+                    Debug.LogWarning($"[PlayerMask] Yetenek ENGELLENDI! role: {gamePlayer?.role}, sadece Seeker kullanabilir");
                 return;
             }
             
-            // E = Invisibility (all masks)
+            // E = Toggle Invisibility (all masks)
             if (Input.GetKeyDown(KeyCode.E))
             {
-                Debug.Log($"[PlayerMask] E tuşuna basıldı - Invisibility denenecek (Mask: {CurrentMask.maskName})");
-                TryUseInvisibility();
+                ToggleInvisibility();
             }
             
-            // Q = Unique ability (Sprinter, etc.)
+            // Q = Unique ability (Sprinter, DecoyMaster, etc.)
             if (Input.GetKeyDown(KeyCode.Q))
             {
                 Debug.Log($"[PlayerMask] Q tuşuna basıldı - Unique ability denenecek (Type: {CurrentMask.uniqueAbilityType})");
@@ -114,44 +157,111 @@ namespace MaskHeist.Mask
             }
         }
         
-        #region Invisibility
+        #region Invisibility (Toggle + Energy Bar)
         
-        private void TryUseInvisibility()
+        private void ToggleInvisibility()
         {
             if (isInvisible)
             {
-                Debug.Log("Already invisible!");
-                return;
+                // Turn OFF invisibility
+                Debug.Log($"[PlayerMask] Görünmezlik KAPATILIYOR (Kalan enerji: {invisibilityEnergy:F1}s)");
+                CmdDeactivateInvisibility();
             }
-            
-            if (IsInvisibilityOnCooldown)
+            else
             {
-                Debug.Log($"Invisibility on cooldown: {InvisibilityCooldownRemaining:F1}s");
-                return;
+                // Turn ON invisibility
+                if (invisibilityEnergy < minEnergyToActivate)
+                {
+                    Debug.Log($"[PlayerMask] Yeterli enerji yok! ({invisibilityEnergy:F1}/{minEnergyToActivate}s gerekli)");
+                    return;
+                }
+                Debug.Log($"[PlayerMask] Görünmezlik AÇILIYOR (Enerji: {invisibilityEnergy:F1}/{invisibilityMaxEnergy}s)");
+                CmdActivateInvisibility();
             }
-            
-            Debug.Log($"Activating invisibility... ({invisibilityDuration}s)");
-            CmdActivateInvisibility();
         }
         
         [Command]
         public void CmdActivateInvisibility()
         {
             if (isInvisible) return;
-            if (NetworkTime.time < invisibilityCooldownEndTime) return;
+            if (invisibilityEnergy < minEnergyToActivate) return;
+            
+            // Destroy active decoy when going invisible to prevent overlap
+            if (activeDecoyObj != null)
+            {
+                NetworkServer.Destroy(activeDecoyObj);
+                activeDecoyObj = null;
+                isDecoyActive = false;
+                Debug.Log($"[Server] {gameObject.name} decoy destroyed (invisibility activated)");
+            }
             
             isInvisible = true;
-            invisibilityCooldownEndTime = (float)NetworkTime.time + invisibilityCooldown;
-            
-            Debug.Log($"[Server] {gameObject.name} activated invisibility!");
-            Invoke(nameof(ServerDeactivateInvisibility), invisibilityDuration);
+            Debug.Log($"[Server] {gameObject.name} invisibility ON! Energy: {invisibilityEnergy:F1}");
         }
         
-        [Server]
-        private void ServerDeactivateInvisibility()
+        [Command]
+        private void CmdDeactivateInvisibility()
         {
+            if (!isInvisible) return;
+            
             isInvisible = false;
-            Debug.Log($"[Server] {gameObject.name} invisibility ended!");
+            Debug.Log($"[Server] {gameObject.name} invisibility OFF! Energy: {invisibilityEnergy:F1}");
+        }
+        
+        /// <summary>
+        /// Server-side: drain energy while invisible, recharge when visible.
+        /// </summary>
+        [ServerCallback]
+        private void FixedUpdate()
+        {
+            // === Invisibility Energy (uses fixedDeltaTime, stays here) ===
+            if (isInvisible)
+            {
+                invisibilityEnergy -= invisibilityDrainRate * Time.fixedDeltaTime;
+                
+                if (invisibilityEnergy <= 0f)
+                {
+                    invisibilityEnergy = 0f;
+                    isInvisible = false;
+                    Debug.Log($"[Server] {gameObject.name} invisibility EXPIRED - enerji bitti!");
+                }
+            }
+            else
+            {
+                if (invisibilityEnergy < invisibilityMaxEnergy)
+                {
+                    invisibilityEnergy += invisibilityRechargeRate * Time.fixedDeltaTime;
+                    invisibilityEnergy = Mathf.Min(invisibilityEnergy, invisibilityMaxEnergy);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Server-side: check ability timers.
+        /// MUST be in LateUpdate (not FixedUpdate) because timers are set using
+        /// Time.time in Command methods which run in Update context.
+        /// FixedUpdate uses Time.fixedTime which can diverge from Time.time.
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (!isServer) return;
+            
+            // === Sprint Timer ===
+            if (isSprinting && sprintDeactivateTime > 0f && Time.time >= sprintDeactivateTime)
+            {
+                sprintDeactivateTime = -1f;
+                isSprinting = false;
+                Debug.Log($"[Server] {gameObject.name} sprint ended!");
+            }
+            
+            // === Decoy Timer ===
+            if (isDecoyActive && decoyDeactivateTime > 0f && Time.time >= decoyDeactivateTime)
+            {
+                decoyDeactivateTime = -1f;
+                isDecoyActive = false;
+                activeDecoyObj = null;
+                Debug.Log($"[Server] {gameObject.name} decoy ended! Cooldown remaining: {DecoyCooldownRemaining:F1}s");
+            }
         }
         
         private void OnInvisibilityChanged(bool oldValue, bool newValue)
@@ -178,6 +288,9 @@ namespace MaskHeist.Mask
             {
                 case MaskAbilityType.Sprinter:
                     TryUseSprint();
+                    break;
+                case MaskAbilityType.DecoyMaster:
+                    TryUseDecoy();
                     break;
                 default:
                     Debug.Log($"Ability {CurrentMask.uniqueAbilityType} not implemented yet");
@@ -211,16 +324,9 @@ namespace MaskHeist.Mask
             
             isSprinting = true;
             sprintCooldownEndTime = (float)NetworkTime.time + sprintCooldown;
+            sprintDeactivateTime = Time.time + sprintDuration;
             
-            Debug.Log($"[Server] {gameObject.name} activated sprint!");
-            Invoke(nameof(ServerDeactivateSprint), sprintDuration);
-        }
-        
-        [Server]
-        private void ServerDeactivateSprint()
-        {
-            isSprinting = false;
-            Debug.Log($"[Server] {gameObject.name} sprint ended!");
+            Debug.Log($"[Server] {gameObject.name} activated sprint! Deactivate at: {sprintDeactivateTime}");
         }
         
         private void OnSprintChanged(bool oldValue, bool newValue)
@@ -238,6 +344,75 @@ namespace MaskHeist.Mask
                     playerController.ResetSpeedMultiplier();
                 }
             }
+        }
+        
+        #endregion
+        
+        #region Decoy Ability
+        
+        private void TryUseDecoy()
+        {
+            if (isDecoyActive)
+            {
+                Debug.Log("Decoy already active!");
+                return;
+            }
+            
+            if (IsDecoyOnCooldown)
+            {
+                Debug.Log($"Decoy on cooldown: {DecoyCooldownRemaining:F1}s");
+                return;
+            }
+            
+            Debug.Log($"Activating decoy... ({decoyLifetime}s lifetime)");
+            CmdActivateDecoy();
+        }
+        
+        [Command]
+        public void CmdActivateDecoy()
+        {
+            if (isDecoyActive) return;
+            if (NetworkTime.time < decoyCooldownEndTime) return;
+            
+            // Destroy any existing decoy first
+            if (activeDecoyObj != null)
+            {
+                NetworkServer.Destroy(activeDecoyObj);
+                activeDecoyObj = null;
+            }
+            
+            isDecoyActive = true;
+            decoyCooldownEndTime = (float)NetworkTime.time + decoyCooldown;
+            decoyDeactivateTime = Time.time + decoyLifetime + 0.5f;
+            
+            // Spawn decoy clone further in front of the player to prevent overlap
+            Vector3 spawnPos = transform.position + transform.forward * 3f;
+            Quaternion spawnRot = transform.rotation;
+            
+            if (decoyClonePrefab != null)
+            {
+                GameObject decoyObj = Instantiate(decoyClonePrefab, spawnPos, spawnRot);
+                NetworkServer.Spawn(decoyObj);
+                activeDecoyObj = decoyObj; // Track the decoy
+                
+                DecoyClone decoy = decoyObj.GetComponent<DecoyClone>();
+                if (decoy != null)
+                {
+                    decoy.Initialize(transform.forward, decoySpeed, decoyLifetime);
+                }
+                
+                Debug.Log($"[Server] {gameObject.name} spawned decoy! Deactivate at: {decoyDeactivateTime}, Cooldown: {decoyCooldown}s");
+            }
+            else
+            {
+                Debug.LogWarning("[PlayerMask] Decoy clone prefab not assigned!");
+            }
+        }
+        
+        private void OnDecoyChanged(bool oldValue, bool newValue)
+        {
+            Debug.Log($"OnDecoyChanged: {oldValue} -> {newValue}");
+            UIEvents.TriggerDecoyActivated(newValue);
         }
         
         #endregion
@@ -360,8 +535,8 @@ namespace MaskHeist.Mask
             CurrentMask = maskData;
             
             // Configure invisibility settings
-            invisibilityDuration = maskData.invisibilityDuration;
-            invisibilityCooldown = maskData.invisibilityCooldown;
+            invisibilityMaxEnergy = maskData.invisibilityDuration;
+            invisibilityEnergy = invisibilityMaxEnergy; // Start full
             
             // Configure sprint settings (if applicable)
             if (maskData.uniqueAbilityType == MaskAbilityType.Sprinter)
@@ -371,9 +546,17 @@ namespace MaskHeist.Mask
                 sprintSpeedMultiplier = maskData.speedMultiplier;
             }
             
+            // Configure decoy settings (if applicable)
+            if (maskData.uniqueAbilityType == MaskAbilityType.DecoyMaster)
+            {
+                decoyLifetime = maskData.decoyLifetime;
+                decoySpeed = maskData.decoySpeed;
+                decoyCooldown = maskData.uniqueAbilityCooldown;
+            }
+            
             SpawnMaskModel(maskData);
             
-            Debug.Log($"Applied mask: {maskData.maskName} (Invis: {invisibilityDuration}s, Unique: {maskData.uniqueAbilityType})");
+            Debug.Log($"Applied mask: {maskData.maskName} (InvisEnergy: {invisibilityMaxEnergy}s, Unique: {maskData.uniqueAbilityType})");
         }
         
         private void SpawnMaskModel(MaskData maskData)
@@ -420,13 +603,13 @@ namespace MaskHeist.Mask
         
         public float GetInvisibilityCooldownPercent()
         {
-            if (invisibilityCooldown <= 0) return 0;
-            return Mathf.Clamp01(InvisibilityCooldownRemaining / invisibilityCooldown);
+            // Now returns energy fill percent (1 = full, 0 = empty)
+            return InvisibilityEnergyPercent;
         }
         
         public bool IsInvisibilityReady()
         {
-            return !isInvisible && !IsInvisibilityOnCooldown;
+            return invisibilityEnergy >= minEnergyToActivate;
         }
         
         public float GetSprintCooldownPercent()
@@ -438,6 +621,17 @@ namespace MaskHeist.Mask
         public bool IsSprintReady()
         {
             return !isSprinting && !IsSprintOnCooldown;
+        }
+        
+        public float GetDecoyCooldownPercent()
+        {
+            if (decoyCooldown <= 0) return 0;
+            return Mathf.Clamp01(DecoyCooldownRemaining / decoyCooldown);
+        }
+        
+        public bool IsDecoyReady()
+        {
+            return !isDecoyActive && !IsDecoyOnCooldown;
         }
         
         #endregion

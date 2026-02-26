@@ -10,19 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c91e4234c5d6b7b4cbf5e1230fffd526, type: 3}
-  m_Name: Speed
+  m_Name: DecoyMaster
   m_EditorClassIdentifier: 
-  maskName: Speed
-  description: 
+  maskName: Decoy Master
+  description: "Holografik bir kopya g\xF6nderir. Saklayan\u0131 yan\u0131ltarak tuzaklar\u0131n\u0131 erkenden patlatmas\u0131na veya pozisyon a\xE7mas\u0131na neden olur."
   icon: {fileID: 0}
-  maskColor: {r: 1, g: 1, b: 1, a: 1}
+  maskColor: {r: 0.3, g: 0.8, b: 1, a: 1}
   maskPrefab: {fileID: 0}
   invisibilityDuration: 5
   invisibilityCooldown: 45
   invisibilityNoiseMultiplier: 0.15
-  uniqueAbilityType: 3
-  uniqueAbilityDuration: 5
-  uniqueAbilityCooldown: 1
-  speedMultiplier: 2
+  uniqueAbilityType: 6
+  uniqueAbilityDuration: 4
+  uniqueAbilityCooldown: 2
+  speedMultiplier: 1.5
   decoyLifetime: 4
   decoySpeed: 7

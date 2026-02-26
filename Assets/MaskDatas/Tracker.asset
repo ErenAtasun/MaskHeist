@@ -24,3 +24,5 @@ MonoBehaviour:
   uniqueAbilityDuration: 8
   uniqueAbilityCooldown: 60
   speedMultiplier: 1.5
+  decoyLifetime: 4
+  decoySpeed: 7

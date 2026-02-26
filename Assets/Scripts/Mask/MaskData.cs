@@ -42,6 +42,13 @@ namespace MaskHeist.Mask
         [Header("Ability-Specific Settings")]
         [Tooltip("For Sprinter: Speed multiplier")]
         public float speedMultiplier = 1.5f;
+        
+        [Header("Decoy Settings")]
+        [Tooltip("How long the decoy clone lives (seconds)")]
+        public float decoyLifetime = 4f;
+        
+        [Tooltip("How fast the decoy clone runs")]
+        public float decoySpeed = 7f;
     }
     
     /// <summary>
@@ -54,6 +61,7 @@ namespace MaskHeist.Mask
         Scanner,        // Short-range ping for loot
         Sprinter,       // Extra speed boost
         Silent,         // Reduced footstep noise
-        Disruptor       // Disable nearby traps
+        Disruptor,      // Disable nearby traps
+        DecoyMaster     // Spawn a holographic decoy clone
     }
 }
