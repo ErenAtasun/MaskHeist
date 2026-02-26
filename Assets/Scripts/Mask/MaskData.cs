@@ -49,6 +49,13 @@ namespace MaskHeist.Mask
         
         [Tooltip("How fast the decoy clone runs")]
         public float decoySpeed = 7f;
+        
+        [Header("Jumper Settings")]
+        [Tooltip("Forward dash force")]
+        public float dashForce = 10f;
+        
+        [Tooltip("Upward force during dash")]
+        public float dashUpwardForce = 12f;
     }
     
     /// <summary>
@@ -62,6 +69,7 @@ namespace MaskHeist.Mask
         Sprinter,       // Extra speed boost
         Silent,         // Reduced footstep noise
         Disruptor,      // Disable nearby traps
-        DecoyMaster     // Spawn a holographic decoy clone
+        DecoyMaster,    // Spawn a holographic decoy clone
+        Jumper          // Dash/leap forward
     }
 }

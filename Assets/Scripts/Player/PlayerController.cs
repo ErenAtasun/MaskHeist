@@ -44,6 +44,10 @@ public class PlayerController : NetworkBehaviour
 
     // External modifiers (for abilities, tag slow, etc.)
     private float externalSpeedMultiplier = 1f;
+    
+    // Dash state (for Jumper mask ability)
+    private Vector3 dashVelocity = Vector3.zero;
+    private float dashDecayRate = 5f; // How fast dash velocity decays
 
     // Properties
     public bool IsSprinting => isSprinting;
@@ -191,11 +195,21 @@ public class PlayerController : NetworkBehaviour
         }
         verticalVelocity += gravity * Time.deltaTime;
 
-        // Final movement
-        Vector3 velocity = moveDirection * currentSpeed;
+        // Final movement (includes dash velocity)
+        Vector3 velocity = moveDirection * currentSpeed + dashVelocity;
         velocity.y = verticalVelocity;
 
         characterController.Move(velocity * Time.deltaTime);
+        
+        // Decay dash velocity over time
+        if (dashVelocity.sqrMagnitude > 0.01f)
+        {
+            dashVelocity = Vector3.Lerp(dashVelocity, Vector3.zero, dashDecayRate * Time.deltaTime);
+        }
+        else
+        {
+            dashVelocity = Vector3.zero;
+        }
     }
 
     private void HandleLook()
@@ -253,5 +267,23 @@ public class PlayerController : NetworkBehaviour
     public void ResetSpeedMultiplier()
     {
         externalSpeedMultiplier = 1f;
+    }
+    
+    /// <summary>
+    /// Apply a dash impulse (for Jumper mask ability).
+    /// Launches the player in the given direction with upward boost.
+    /// </summary>
+    public void ApplyDash(float forwardForce, float upwardForce)
+    {
+        // Use camera forward for direction (horizontal only)
+        Vector3 dashDir = transform.forward;
+        
+        // Apply horizontal dash velocity
+        dashVelocity = dashDir * forwardForce;
+        
+        // Apply upward velocity  
+        verticalVelocity = upwardForce;
+        
+        Debug.Log($"[PlayerController] Dash applied! Forward: {forwardForce}, Up: {upwardForce}");
     }
 }

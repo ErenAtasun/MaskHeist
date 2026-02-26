@@ -58,6 +58,12 @@ namespace MaskHeist.Mask
         [SerializeField] private GameObject decoyClonePrefab;
         private GameObject activeDecoyObj; // Track active decoy to manage/destroy it
         
+        // Jumper/Dash state
+        private float dashForce = 10f;
+        private float dashUpwardForce = 12f;
+        private float dashCooldown = 4f;
+        [SyncVar] private float dashCooldownEndTime = 0f;
+        
         private GameObject currentMaskModel;
         private MaskPickup currentMaskPickup;
         
@@ -80,6 +86,9 @@ namespace MaskHeist.Mask
         public bool IsDecoyOnCooldown => NetworkTime.time < decoyCooldownEndTime;
         public float DecoyCooldownRemaining => Mathf.Max(0, decoyCooldownEndTime - (float)NetworkTime.time);
         public bool IsDecoyActive => isDecoyActive;
+        
+        public bool IsDashOnCooldown => NetworkTime.time < dashCooldownEndTime;
+        public float DashCooldownRemaining => Mathf.Max(0, dashCooldownEndTime - (float)NetworkTime.time);
         
         private void Awake()
         {
@@ -292,6 +301,9 @@ namespace MaskHeist.Mask
                 case MaskAbilityType.DecoyMaster:
                     TryUseDecoy();
                     break;
+                case MaskAbilityType.Jumper:
+                    TryUseDash();
+                    break;
                 default:
                     Debug.Log($"Ability {CurrentMask.uniqueAbilityType} not implemented yet");
                     break;
@@ -413,6 +425,46 @@ namespace MaskHeist.Mask
         {
             Debug.Log($"OnDecoyChanged: {oldValue} -> {newValue}");
             UIEvents.TriggerDecoyActivated(newValue);
+        }
+        
+        #endregion
+        
+        #region Jumper/Dash Ability
+        
+        private void TryUseDash()
+        {
+            if (IsDashOnCooldown)
+            {
+                Debug.Log($"Dash on cooldown: {DashCooldownRemaining:F1}s");
+                return;
+            }
+            
+            Debug.Log($"Activating dash! (Force: {dashForce}, Up: {dashUpwardForce})");
+            CmdActivateDash();
+        }
+        
+        [Command]
+        public void CmdActivateDash()
+        {
+            if (NetworkTime.time < dashCooldownEndTime) return;
+            
+            dashCooldownEndTime = (float)NetworkTime.time + dashCooldown;
+            
+            Debug.Log($"[Server] {gameObject.name} activated dash!");
+            
+            // Apply dash on all clients
+            RpcOnDash(dashForce, dashUpwardForce);
+        }
+        
+        [ClientRpc]
+        private void RpcOnDash(float force, float upForce)
+        {
+            Debug.Log($"[RpcOnDash] Dash! force={force}, upForce={upForce}, isLocalPlayer={isLocalPlayer}");
+            
+            if (playerController != null)
+            {
+                playerController.ApplyDash(force, upForce);
+            }
         }
         
         #endregion
@@ -552,6 +604,14 @@ namespace MaskHeist.Mask
                 decoyLifetime = maskData.decoyLifetime;
                 decoySpeed = maskData.decoySpeed;
                 decoyCooldown = maskData.uniqueAbilityCooldown;
+            }
+            
+            // Configure jumper/dash settings (if applicable)
+            if (maskData.uniqueAbilityType == MaskAbilityType.Jumper)
+            {
+                dashForce = maskData.dashForce;
+                dashUpwardForce = maskData.dashUpwardForce;
+                dashCooldown = maskData.uniqueAbilityCooldown;
             }
             
             SpawnMaskModel(maskData);
